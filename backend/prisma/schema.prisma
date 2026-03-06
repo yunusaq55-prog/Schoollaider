@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  BESTUUR_ADMIN
+  BESTUUR_GEBRUIKER
+  SCHOOL_DIRECTEUR
+  SCHOOL_GEBRUIKER
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  naam      String
+  slug      String   @unique
+  active    Boolean  @default(true)
+  settings  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  schools   School[]
+  users     User[]
+  documents Document[]
+
+  @@map("tenants")
+}
+
+model School {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  naam      String
+  brinCode  String   @map("brin_code")
+  adres     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users     User[]
+  documents Document[]
+
+  @@map("schools")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  naam         String
+  role         Role     @default(SCHOOL_GEBRUIKER)
+  schoolId     String?  @map("school_id")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  school    School?    @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  documents Document[]
+
+  @@map("users")
+}
+
+model Document {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  schoolId    String   @map("school_id")
+  titel       String
+  beschrijving String
+  s3Key       String   @map("s3_key")
+  type        String
+  uploadedBy  String   @map("uploaded_by")
+  versie      Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [uploadedBy], references: [id])
+
+  @@map("documents")
+}
+
+model InspectieDomein {
+  id          String @id @default(uuid())
+  code        String @unique
+  naam        String
+  beschrijving String
+  versie      String
+
+  standaarden InspectieStandaard[]
+
+  @@map("inspectie_domeinen")
+}
+
+model InspectieStandaard {
+  id          String @id @default(uuid())
+  domeinId    String @map("domein_id")
+  code        String @unique
+  naam        String
+  beschrijving String
+  toelichting String @default("")
+
+  domein InspectieDomein @relation(fields: [domeinId], references: [id], onDelete: Cascade)
+
+  @@map("inspectie_standaarden")
+}
