@@ -13,9 +13,8 @@ COPY backend/ backend/
 RUN pnpm install --frozen-lockfile
 
 # Build shared (outputs to shared/dist/) + backend
-RUN pnpm --filter shared build
-RUN pnpm --filter backend run prisma:generate
-RUN pnpm --filter backend build
+# v2: force rebuild after ESM fix
+RUN pnpm --filter shared build && pnpm --filter backend run prisma:generate && pnpm --filter backend build
 
 WORKDIR /app/backend
 
