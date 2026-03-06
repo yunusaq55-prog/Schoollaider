@@ -4,22 +4,15 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy workspace config
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY tsconfig.base.json ./
-
-# Copy package.json files for dependency resolution
-COPY shared/package.json shared/
-COPY backend/package.json backend/
+# Copy all workspace files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY shared/ shared/
+COPY backend/ backend/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy source code
-COPY shared/ shared/
-COPY backend/ backend/
-
-# Build shared + backend
+# Build shared (outputs to shared/dist/) + backend
 RUN pnpm --filter shared build
 RUN pnpm --filter backend run prisma:generate
 RUN pnpm --filter backend build
