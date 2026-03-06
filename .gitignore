@@ -7,7 +7,6 @@ Thumbs.db
 
 # Prisma
 backend/prisma/*.db
-backend/prisma/migrations/
 
 # Frontend
 frontend/.vite/
