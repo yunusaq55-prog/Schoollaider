@@ -1,4 +1,4 @@
-FROM node:20-slim AS base
+FROM node:20-slim
 RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
@@ -23,25 +23,6 @@ COPY backend/ backend/
 RUN pnpm --filter shared build
 RUN pnpm --filter backend run prisma:generate
 RUN pnpm --filter backend build
-
-# Production stage
-FROM node:20-slim AS production
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
-WORKDIR /app
-
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY shared/package.json shared/
-COPY backend/package.json backend/
-
-RUN pnpm install --frozen-lockfile --prod
-
-COPY --from=base /app/shared/dist/ shared/dist/
-COPY --from=base /app/shared/package.json shared/
-COPY --from=base /app/backend/dist/ backend/dist/
-COPY --from=base /app/backend/prisma/ backend/prisma/
-COPY --from=base /app/node_modules/.prisma/ node_modules/.prisma/
 
 WORKDIR /app/backend
 
