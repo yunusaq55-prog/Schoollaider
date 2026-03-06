@@ -41,7 +41,7 @@ COPY --from=base /app/shared/dist/ shared/dist/
 COPY --from=base /app/shared/package.json shared/
 COPY --from=base /app/backend/dist/ backend/dist/
 COPY --from=base /app/backend/prisma/ backend/prisma/
-COPY --from=base /app/backend/node_modules/.prisma/ backend/node_modules/.prisma/
+COPY --from=base /app/node_modules/.prisma/ node_modules/.prisma/
 
 WORKDIR /app/backend
 
