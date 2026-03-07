@@ -4,6 +4,7 @@
   "buildCommand": "cd .. && pnpm --filter shared build && pnpm --filter frontend build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "https://schoollaiderbackend-production.up.railway.app/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
