@@ -12,8 +12,8 @@ COPY backend/ backend/
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Build shared (outputs to shared/dist/) + backend
-# v2: force rebuild after ESM fix
+# Force no-cache on build step
+ARG CACHEBUST=1
 RUN pnpm --filter shared build && pnpm --filter backend run prisma:generate && pnpm --filter backend build
 
 WORKDIR /app/backend
