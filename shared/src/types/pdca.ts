@@ -1,7 +1,7 @@
 export type PdcaFase = 'PLAN' | 'DO' | 'CHECK' | 'ACT';
 export type PdcaStatus = 'NIET_GESTART' | 'BEZIG' | 'AFGEROND';
 
-import type { AiSourceType } from './analysis';
+import type { AiSourceType } from './analysis.js';
 
 export interface PdcaItem {
   id: string;

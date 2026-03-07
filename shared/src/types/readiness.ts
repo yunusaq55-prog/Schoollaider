@@ -1,4 +1,4 @@
-import type { BewijsStatus } from './inspectie';
+import type { BewijsStatus } from './inspectie.js';
 
 export interface ReadinessScore {
   id: string;
