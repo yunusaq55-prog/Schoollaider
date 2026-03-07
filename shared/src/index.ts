@@ -3,3 +3,5 @@ export * from './types/auth.js';
 export * from './types/tenant.js';
 export * from './types/document.js';
 export * from './types/inspectie.js';
+export * from './types/pdca.js';
+export * from './types/hr.js';

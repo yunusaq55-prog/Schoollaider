@@ -8,6 +8,10 @@ import tenantRoutes from './routes/tenant.routes.js';
 import schoolRoutes from './routes/school.routes.js';
 import userRoutes from './routes/user.routes.js';
 import documentRoutes from './routes/document.routes.js';
+import pdcaRoutes from './routes/pdca.routes.js';
+import dashboardRoutes from './routes/dashboard.routes.js';
+import hrRoutes from './routes/hr.routes.js';
+import inspectieRoutes from './routes/inspectie.routes.js';
 
 const app = express();
 
@@ -29,6 +33,10 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/schools', schoolRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/pdca', pdcaRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/hr', hrRoutes);
+app.use('/api/inspectie', inspectieRoutes);
 
 // Error handling
 app.use(errorHandler);

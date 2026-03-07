@@ -24,9 +24,10 @@ model Tenant {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  schools   School[]
-  users     User[]
-  documents Document[]
+  schools    School[]
+  users      User[]
+  documents  Document[]
+  pdcaCycli  PdcaCyclus[]
 
   @@map("tenants")
 }
@@ -40,9 +41,15 @@ model School {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  users     User[]
-  documents Document[]
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users          User[]
+  documents      Document[]
+  pdcaCycli      PdcaCyclus[]
+  hrFormatie      HrFormatie[]
+  hrVerzuim       HrVerzuim[]
+  hrVervanging    HrVervanging[]
+  hrLeeftijd      HrLeeftijd[]
+  hrSignalen      HrSignaal[]
 
   @@map("schools")
 }
@@ -59,9 +66,10 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  school    School?    @relation(fields: [schoolId], references: [id], onDelete: SetNull)
-  documents Document[]
+  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  school     School?      @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  documents  Document[]
+  pdcaCycli  PdcaCyclus[]
 
   @@map("users")
 }
@@ -85,6 +93,165 @@ model Document {
 
   @@map("documents")
 }
+
+// ─── PDCA Kwaliteitscyclus ────────────────────
+
+enum PdcaFase {
+  PLAN
+  DO
+  CHECK
+  ACT
+}
+
+enum PdcaStatus {
+  CONCEPT
+  ACTIEF
+  AFGEROND
+}
+
+model PdcaCyclus {
+  id            String     @id @default(uuid())
+  tenantId      String     @map("tenant_id")
+  schoolId      String     @map("school_id")
+  titel         String
+  beschrijving  String
+  schooljaar    String
+  fase          PdcaFase   @default(PLAN)
+  status        PdcaStatus @default(CONCEPT)
+  startDatum    DateTime?  @map("start_datum")
+  eindDatum     DateTime?  @map("eind_datum")
+  createdBy     String     @map("created_by")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  tenant  Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  school  School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  creator User         @relation(fields: [createdBy], references: [id])
+  acties  PdcaActie[]
+
+  @@map("pdca_cycli")
+}
+
+model PdcaActie {
+  id           String     @id @default(uuid())
+  cyclusId     String     @map("cyclus_id")
+  fase         PdcaFase
+  titel        String
+  beschrijving String
+  verantwoordelijke String @default("")
+  deadline     DateTime?
+  afgerond     Boolean    @default(false)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  cyclus PdcaCyclus @relation(fields: [cyclusId], references: [id], onDelete: Cascade)
+
+  @@map("pdca_acties")
+}
+
+// ─── HR Module ────────────────────────────────
+
+enum HrSignaalStatus {
+  OPEN
+  IN_BEHANDELING
+  AFGEHANDELD
+}
+
+model HrFormatie {
+  id               String   @id @default(uuid())
+  schoolId         String   @map("school_id")
+  schooljaar       String
+  begroteFte       Float    @map("begrote_fte")
+  ingevuldeFte     Float    @map("ingevulde_fte")
+  vacatures        Int      @default(0)
+  tijdelijkPct     Float    @default(0) @map("tijdelijk_pct")
+  fteLeerkracht    Float    @default(0) @map("fte_leerkracht")
+  fteOop           Float    @default(0) @map("fte_oop")
+  fteDirectie      Float    @default(0) @map("fte_directie")
+  capaciteitsScore Float    @default(0) @map("capaciteits_score")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, schooljaar])
+  @@map("hr_formatie")
+}
+
+model HrVerzuim {
+  id                     String   @id @default(uuid())
+  schoolId               String   @map("school_id")
+  periode                String
+  verzuimPct             Float    @map("verzuim_pct")
+  kortVerzuimPct         Float    @default(0) @map("kort_verzuim_pct")
+  langVerzuimPct         Float    @default(0) @map("lang_verzuim_pct")
+  ziekteVervangingsDagen Int      @default(0) @map("ziekte_vervangings_dagen")
+  belastbaarheidsIndex   Float    @default(0) @map("belastbaarheids_index")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, periode])
+  @@map("hr_verzuim")
+}
+
+model HrVervanging {
+  id                     String   @id @default(uuid())
+  schoolId               String   @map("school_id")
+  schooljaar             String
+  totaalVervangingsDagen Int      @map("totaal_vervangings_dagen")
+  nietVervuldeDagen      Int      @default(0) @map("niet_vervulde_dagen")
+  kostenVervanging       Float    @default(0) @map("kosten_vervanging")
+  totaalFte              Float    @default(0) @map("totaal_fte")
+  vervangingsIndex       Float    @default(0) @map("vervangings_index")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, schooljaar])
+  @@map("hr_vervanging")
+}
+
+model HrLeeftijd {
+  id                      String   @id @default(uuid())
+  schoolId                String   @map("school_id")
+  schooljaar              String
+  categorieOnder30        Int      @default(0) @map("categorie_onder_30")
+  categorie30Tot40        Int      @default(0) @map("categorie_30_tot_40")
+  categorie40Tot50        Int      @default(0) @map("categorie_40_tot_50")
+  categorie50Tot60        Int      @default(0) @map("categorie_50_tot_60")
+  categorie60Plus         Int      @default(0) @map("categorie_60_plus")
+  verwachteUitstroom3Jaar Float    @default(0) @map("verwachte_uitstroom_3_jaar")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, schooljaar])
+  @@map("hr_leeftijd")
+}
+
+model HrSignaal {
+  id              String          @id @default(uuid())
+  schoolId        String          @map("school_id")
+  type            String
+  titel           String
+  beschrijving    String
+  aanbevolenActie String          @default("") @map("aanbevolen_actie")
+  deadline        DateTime?
+  status          HrSignaalStatus @default(OPEN)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, status])
+  @@map("hr_signalen")
+}
+
+// ─── Inspectiekader ───────────────────────────
 
 model InspectieDomein {
   id          String @id @default(uuid())

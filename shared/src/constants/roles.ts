@@ -13,7 +13,11 @@ export type Permission =
   | 'users:manage_own_school'
   | 'documents:upload'
   | 'schools:view_all'
-  | 'school:view_own';
+  | 'school:view_own'
+  | 'kwaliteit:manage'
+  | 'kwaliteit:view'
+  | 'hr:manage'
+  | 'hr:view';
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   [Role.SUPER_ADMIN]: [
@@ -23,6 +27,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'documents:upload',
     'schools:view_all',
     'school:view_own',
+    'kwaliteit:manage',
+    'kwaliteit:view',
+    'hr:manage',
+    'hr:view',
   ],
   [Role.BESTUUR_ADMIN]: [
     'schools:manage',
@@ -30,19 +38,31 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'documents:upload',
     'schools:view_all',
     'school:view_own',
+    'kwaliteit:manage',
+    'kwaliteit:view',
+    'hr:manage',
+    'hr:view',
   ],
   [Role.BESTUUR_GEBRUIKER]: [
     'documents:upload',
     'schools:view_all',
     'school:view_own',
+    'kwaliteit:view',
+    'hr:view',
   ],
   [Role.SCHOOL_DIRECTEUR]: [
     'users:manage_own_school',
     'documents:upload',
     'school:view_own',
+    'kwaliteit:manage',
+    'kwaliteit:view',
+    'hr:manage',
+    'hr:view',
   ],
   [Role.SCHOOL_GEBRUIKER]: [
     'documents:upload',
     'school:view_own',
+    'kwaliteit:view',
+    'hr:view',
   ],
 };
