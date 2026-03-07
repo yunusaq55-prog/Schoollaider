@@ -3,24 +3,16 @@ import { LoginPage } from './auth/LoginPage';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { DashboardPage } from './pages/DashboardPage';
-import { DocumenthubPage } from './pages/DocumenthubPage';
-import { InspectiekaderPage } from './pages/InspectiekaderPage';
+import { ScholenBeheerPage } from './pages/ScholenBeheerPage';
+import { DocumentHubPage } from './pages/DocumentHubPage';
+import { InspectieKaderPage } from './pages/InspectieKaderPage';
 import { PdcaPage } from './pages/PdcaPage';
+import { GebruikersBeheerPage } from './pages/GebruikersBeheerPage';
 import { HrDashboardPage } from './pages/hr/HrDashboardPage';
 import { HrFormatiePage } from './pages/hr/HrFormatiePage';
 import { HrVerzuimPage } from './pages/hr/HrVerzuimPage';
 import { HrVervangingPage } from './pages/hr/HrVervangingPage';
 import { HrLeeftijdPage } from './pages/hr/HrLeeftijdPage';
-import { ScholenPage } from './pages/ScholenPage';
-
-function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-      <p className="mt-2 text-gray-600">Deze pagina wordt binnenkort gebouwd.</p>
-    </div>
-  );
-}
 
 export default function App() {
   return (
@@ -33,22 +25,17 @@ export default function App() {
           </ProtectedRoute>
         }
       >
-        {/* Kwaliteitsbeheer */}
         <Route path="/" element={<DashboardPage />} />
-        <Route path="/documenten" element={<DocumenthubPage />} />
-        <Route path="/inspectiekader" element={<InspectiekaderPage />} />
+        <Route path="/scholen" element={<ScholenBeheerPage />} />
+        <Route path="/documenten" element={<DocumentHubPage />} />
+        <Route path="/inspectiekader" element={<InspectieKaderPage />} />
         <Route path="/pdca" element={<PdcaPage />} />
-
-        {/* HR Module */}
+        <Route path="/gebruikers" element={<GebruikersBeheerPage />} />
         <Route path="/hr" element={<HrDashboardPage />} />
         <Route path="/hr/formatie" element={<HrFormatiePage />} />
         <Route path="/hr/verzuim" element={<HrVerzuimPage />} />
         <Route path="/hr/vervanging" element={<HrVervangingPage />} />
         <Route path="/hr/leeftijd" element={<HrLeeftijdPage />} />
-
-        {/* Beheer */}
-        <Route path="/scholen" element={<ScholenPage />} />
-        <Route path="/gebruikers" element={<PlaceholderPage title="Gebruikers" />} />
       </Route>
     </Routes>
   );

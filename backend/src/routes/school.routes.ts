@@ -3,6 +3,7 @@ import { authenticate } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/rbac.js';
 import { tenantContext } from '../middleware/tenantContext.js';
 import * as schoolService from '../services/school.service.js';
+import type { SchoolStatus } from '@prisma/client';
 
 const router = Router();
 
@@ -10,7 +11,8 @@ router.use(authenticate, tenantContext);
 
 router.get('/', async (req, res, next) => {
   try {
-    const schools = await schoolService.listSchools(req.user!.tenantId);
+    const status = req.query.status as SchoolStatus | undefined;
+    const schools = await schoolService.listSchools(req.user!.tenantId, { status });
     res.json(schools);
   } catch (err) {
     next(err);
@@ -38,6 +40,15 @@ router.post('/', requirePermission('schools:manage'), async (req, res, next) => 
 router.patch('/:id', requirePermission('schools:manage'), async (req, res, next) => {
   try {
     const school = await schoolService.updateSchool(req.user!.tenantId, req.params.id, req.body);
+    res.json(school);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/:id/archive', requirePermission('schools:manage'), async (req, res, next) => {
+  try {
+    const school = await schoolService.archiveSchool(req.user!.tenantId, req.params.id);
     res.json(school);
   } catch (err) {
     next(err);

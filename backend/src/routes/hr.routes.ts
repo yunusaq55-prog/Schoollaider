@@ -1,20 +1,55 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requirePermission } from '../middleware/rbac.js';
 import { tenantContext } from '../middleware/tenantContext.js';
-import * as hrService from '../services/hr.service.js';
+import { requirePermission } from '../middleware/rbac.js';
+import * as formatieService from '../services/hr/formatie.service.js';
+import * as verzuimService from '../services/hr/verzuim.service.js';
+import * as vervangingService from '../services/hr/vervanging.service.js';
+import * as leeftijdService from '../services/hr/leeftijd.service.js';
+import * as hrScoreService from '../services/hr/hr-score.service.js';
+import * as hrSignaalService from '../services/hr/hr-signaal.service.js';
+import * as hrDashboardService from '../services/hr/hr-dashboard.service.js';
 
 const router = Router();
 
 router.use(authenticate, tenantContext);
 
-// ── Formatie ────────────────────────────────────────────────────────
+// ─── Bestuur dashboard endpoints ─────────────────────────────
 
-router.get('/school/:schoolId/formatie', requirePermission('hr:view'), async (req, res, next) => {
+router.get('/bestuur/kpis', async (req, res, next) => {
   try {
-    const schooljaar = req.query.schooljaar as string;
-    const formatie = await hrService.getFormatie(req.params.schoolId, schooljaar);
-    res.json(formatie);
+    const kpis = await hrDashboardService.getHrBestuurKPIs(req.user!.tenantId);
+    res.json(kpis);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/bestuur/overview', async (req, res, next) => {
+  try {
+    const rows = await hrDashboardService.getHrSchoolOverview(req.user!.tenantId);
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/bestuur/alerts', async (req, res, next) => {
+  try {
+    const alerts = await hrDashboardService.getHrAlerts(req.user!.tenantId);
+    res.json(alerts);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Formatie endpoints ──────────────────────────────────────
+
+router.get('/school/:schoolId/formatie', async (req, res, next) => {
+  try {
+    const schooljaar = req.query.schooljaar as string | undefined;
+    const data = await formatieService.getFormatie(req.params.schoolId, schooljaar);
+    res.json(data);
   } catch (err) {
     next(err);
   }
@@ -22,20 +57,22 @@ router.get('/school/:schoolId/formatie', requirePermission('hr:view'), async (re
 
 router.put('/school/:schoolId/formatie', requirePermission('hr:manage'), async (req, res, next) => {
   try {
-    const formatie = await hrService.upsertFormatie(req.params.schoolId, req.body);
-    res.json(formatie);
+    const data = await formatieService.upsertFormatie(req.params.schoolId, req.body);
+    // Generate signals after data change
+    await hrSignaalService.generateSignalen(req.params.schoolId);
+    res.json(data);
   } catch (err) {
     next(err);
   }
 });
 
-// ── Verzuim ─────────────────────────────────────────────────────────
+// ─── Verzuim endpoints ───────────────────────────────────────
 
-router.get('/school/:schoolId/verzuim', requirePermission('hr:view'), async (req, res, next) => {
+router.get('/school/:schoolId/verzuim', async (req, res, next) => {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 12;
-    const periodes = await hrService.getVerzuimPeriodes(req.params.schoolId, limit);
-    res.json(periodes);
+    const data = await verzuimService.getVerzuimPeriodes(req.params.schoolId, limit);
+    res.json(data);
   } catch (err) {
     next(err);
   }
@@ -43,20 +80,21 @@ router.get('/school/:schoolId/verzuim', requirePermission('hr:view'), async (req
 
 router.put('/school/:schoolId/verzuim', requirePermission('hr:manage'), async (req, res, next) => {
   try {
-    const verzuim = await hrService.upsertVerzuim(req.params.schoolId, req.body);
-    res.json(verzuim);
+    const data = await verzuimService.upsertVerzuim(req.params.schoolId, req.body);
+    await hrSignaalService.generateSignalen(req.params.schoolId);
+    res.json(data);
   } catch (err) {
     next(err);
   }
 });
 
-// ── Vervanging ──────────────────────────────────────────────────────
+// ─── Vervanging endpoints ────────────────────────────────────
 
-router.get('/school/:schoolId/vervanging', requirePermission('hr:view'), async (req, res, next) => {
+router.get('/school/:schoolId/vervanging', async (req, res, next) => {
   try {
-    const schooljaar = req.query.schooljaar as string;
-    const vervanging = await hrService.getVervanging(req.params.schoolId, schooljaar);
-    res.json(vervanging);
+    const schooljaar = req.query.schooljaar as string | undefined;
+    const data = await vervangingService.getVervanging(req.params.schoolId, schooljaar);
+    res.json(data);
   } catch (err) {
     next(err);
   }
@@ -64,20 +102,21 @@ router.get('/school/:schoolId/vervanging', requirePermission('hr:view'), async (
 
 router.put('/school/:schoolId/vervanging', requirePermission('hr:manage'), async (req, res, next) => {
   try {
-    const vervanging = await hrService.upsertVervanging(req.params.schoolId, req.body);
-    res.json(vervanging);
+    const data = await vervangingService.upsertVervanging(req.params.schoolId, req.body);
+    await hrSignaalService.generateSignalen(req.params.schoolId);
+    res.json(data);
   } catch (err) {
     next(err);
   }
 });
 
-// ── Leeftijd ────────────────────────────────────────────────────────
+// ─── Leeftijd endpoints ──────────────────────────────────────
 
-router.get('/school/:schoolId/leeftijd', requirePermission('hr:view'), async (req, res, next) => {
+router.get('/school/:schoolId/leeftijd', async (req, res, next) => {
   try {
-    const schooljaar = req.query.schooljaar as string;
-    const leeftijd = await hrService.getLeeftijd(req.params.schoolId, schooljaar);
-    res.json(leeftijd);
+    const schooljaar = req.query.schooljaar as string | undefined;
+    const data = await leeftijdService.getLeeftijd(req.params.schoolId, schooljaar);
+    res.json(data);
   } catch (err) {
     next(err);
   }
@@ -85,20 +124,33 @@ router.get('/school/:schoolId/leeftijd', requirePermission('hr:view'), async (re
 
 router.put('/school/:schoolId/leeftijd', requirePermission('hr:manage'), async (req, res, next) => {
   try {
-    const leeftijd = await hrService.upsertLeeftijd(req.params.schoolId, req.body);
-    res.json(leeftijd);
+    const data = await leeftijdService.upsertLeeftijd(req.params.schoolId, req.body);
+    await hrSignaalService.generateSignalen(req.params.schoolId);
+    res.json(data);
   } catch (err) {
     next(err);
   }
 });
 
-// ── Signalen ────────────────────────────────────────────────────────
+// ─── Score & Signalen endpoints ──────────────────────────────
 
-router.get('/school/:schoolId/signalen', requirePermission('hr:view'), async (req, res, next) => {
+router.get('/school/:schoolId/score', async (req, res, next) => {
+  try {
+    const data = await hrScoreService.getHrRisicoScore(req.params.schoolId);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/school/:schoolId/signalen', async (req, res, next) => {
   try {
     const status = req.query.status as string | undefined;
-    const signalen = await hrService.listSignalen(req.params.schoolId, status);
-    res.json(signalen);
+    const data = await hrSignaalService.listSignalen(
+      req.params.schoolId,
+      status as 'OPEN' | 'IN_BEHANDELING' | 'AFGEHANDELD' | undefined,
+    );
+    res.json(data);
   } catch (err) {
     next(err);
   }
@@ -106,19 +158,8 @@ router.get('/school/:schoolId/signalen', requirePermission('hr:view'), async (re
 
 router.patch('/signalen/:id', requirePermission('hr:manage'), async (req, res, next) => {
   try {
-    const signaal = await hrService.updateSignaalStatus(req.params.id, req.body.status);
-    res.json(signaal);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// ── Overview ────────────────────────────────────────────────────────
-
-router.get('/overview', requirePermission('hr:view'), async (req, res, next) => {
-  try {
-    const overview = await hrService.getHrSchoolOverview(req.user!.tenantId);
-    res.json(overview);
+    const data = await hrSignaalService.updateSignaalStatus(req.params.id, req.body.status);
+    res.json(data);
   } catch (err) {
     next(err);
   }

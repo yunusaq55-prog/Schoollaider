@@ -1,7 +1,12 @@
+// ─── HR Module Types ────────────────────────────────────────────────
+
+// ─── Enums ──────────────────────────────────
 export type HrRisico = 'STABIEL' | 'KWETSBAAR' | 'HOOG_RISICO';
+export type HrPeriodeType = 'MAAND' | 'KWARTAAL' | 'JAAR';
 export type HrSignaalStatus = 'OPEN' | 'IN_BEHANDELING' | 'AFGEHANDELD';
 export type HrSignaalType = 'TEKORT' | 'VERZUIM' | 'VERVANGING' | 'UITSTROOM';
 
+// ─── Module 1: Formatie & Capaciteit ────────
 export interface FormatieData {
   id: string;
   schoolId: string;
@@ -17,6 +22,7 @@ export interface FormatieData {
   updatedAt: string;
 }
 
+// ─── Module 2: Verzuim & Belastbaarheid ─────
 export interface VerzuimData {
   id: string;
   schoolId: string;
@@ -29,6 +35,7 @@ export interface VerzuimData {
   updatedAt: string;
 }
 
+// ─── Module 3: Vervangingsdruk ──────────────
 export interface VervangingsData {
   id: string;
   schoolId: string;
@@ -41,6 +48,7 @@ export interface VervangingsData {
   updatedAt: string;
 }
 
+// ─── Module 4: Leeftijd & Uitstroom ─────────
 export interface LeeftijdData {
   id: string;
   schoolId: string;
@@ -54,6 +62,20 @@ export interface LeeftijdData {
   updatedAt: string;
 }
 
+// ─── Module 5: HR Risicoscore ───────────────
+export interface HrRisicoScore {
+  schoolId: string;
+  schoolNaam: string;
+  hrScore: number;
+  formatieScore: number;
+  verzuimScore: number;
+  vervangingsScore: number;
+  leeftijdScore: number;
+  risico: HrRisico;
+  trend: 'STIJGEND' | 'STABIEL' | 'DALEND';
+}
+
+// ─── HR Signalen (alerts) ───────────────────
 export interface HrSignaal {
   id: string;
   schoolId: string;
@@ -66,7 +88,17 @@ export interface HrSignaal {
   createdAt: string;
 }
 
-export interface HrSchoolOverview {
+// ─── Bestuur HR Dashboard KPIs ──────────────
+export interface HrBestuurKPIs {
+  gemHrScore: number;
+  scholenHoogRisico: number;
+  totaalVacatures: number;
+  totaalVervangingskosten: number;
+  gemVerzuimPct: number;
+}
+
+// ─── School HR Overview Row ─────────────────
+export interface HrSchoolOverviewRow {
   schoolId: string;
   schoolNaam: string;
   hrScore: number;
@@ -74,9 +106,11 @@ export interface HrSchoolOverview {
   verzuimPct: number;
   vervangingsIndex: number;
   risico: HrRisico;
+  trend: 'STIJGEND' | 'STABIEL' | 'DALEND';
   openSignalen: number;
 }
 
+// ─── Request types ──────────────────────────
 export interface CreateFormatieRequest {
   schooljaar: string;
   begroteFte: number;

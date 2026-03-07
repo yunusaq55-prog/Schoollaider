@@ -15,31 +15,12 @@ function generateRefreshToken(payload: JwtPayload): string {
 }
 
 export async function login({ email, password }: LoginRequest) {
-  console.log(`[AUTH] Login poging voor: ${email}`);
-
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) {
-    console.log(`[AUTH] Gebruiker NIET gevonden: ${email}`);
-    throw new UnauthorizedError('Ongeldige inloggegevens');
-  }
-  if (!user.active) {
-    console.log(`[AUTH] Gebruiker INACTIEF: ${email}`);
-    throw new UnauthorizedError('Ongeldige inloggegevens');
-  }
-
-  console.log(`[AUTH] Gebruiker gevonden: ${user.naam} (${user.role})`);
-  console.log(`[AUTH] Hash uit DB: ${user.passwordHash.substring(0, 20)}...`);
-  console.log(`[AUTH] Wachtwoord lengte: ${password?.length ?? 'undefined'}`);
+  if (!user) throw new UnauthorizedError('Ongeldige inloggegevens');
+  if (!user.active) throw new UnauthorizedError('Ongeldige inloggegevens');
 
   const valid = await bcrypt.compare(password, user.passwordHash);
-  console.log(`[AUTH] bcrypt.compare resultaat: ${valid}`);
-
-  if (!valid) {
-    console.log(`[AUTH] Wachtwoord ONGELDIG voor: ${email}`);
-    throw new UnauthorizedError('Ongeldige inloggegevens');
-  }
-
-  console.log(`[AUTH] Login GESLAAGD voor: ${email}`);
+  if (!valid) throw new UnauthorizedError('Ongeldige inloggegevens');
 
   const payload: JwtPayload = {
     userId: user.id,

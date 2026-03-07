@@ -3,14 +3,25 @@ import { authenticate } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/rbac.js';
 import { tenantContext } from '../middleware/tenantContext.js';
 import * as userService from '../services/user.service.js';
+import { Role, ROLE_PERMISSIONS } from '@schoollaider/shared';
 
 const router = Router();
 
 router.use(authenticate, tenantContext);
 
-router.get('/', requirePermission('users:manage'), async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
-    const schoolId = req.query.schoolId as string | undefined;
+    const userPerms = ROLE_PERMISSIONS[req.user!.role as Role] ?? [];
+    let schoolId = req.query.schoolId as string | undefined;
+
+    // School directors can only see users in their own school
+    if (userPerms.includes('users:manage_own_school') && !userPerms.includes('users:manage')) {
+      schoolId = req.user!.schoolId ?? undefined;
+    } else if (!userPerms.includes('users:manage') && !userPerms.includes('users:manage_own_school')) {
+      res.status(403).json({ error: 'Onvoldoende rechten' });
+      return;
+    }
+
     const users = await userService.listUsers(req.user!.tenantId, schoolId);
     res.json(users);
   } catch (err) {

@@ -1,120 +1,92 @@
 import prisma from '../utils/prisma.js';
 import { NotFoundError } from '../utils/errors.js';
+import type { PdcaFase, PdcaStatus } from '@prisma/client';
 
-export async function listCycli(tenantId: string, schoolId?: string) {
-  return prisma.pdcaCyclus.findMany({
+export function getCurrentSchoolYear(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-based
+  // School year starts in August
+  if (month >= 7) {
+    return `${year}-${year + 1}`;
+  }
+  return `${year - 1}-${year}`;
+}
+
+export async function listPdcaItems(schoolId: string, schooljaar?: string) {
+  return prisma.pdcaItem.findMany({
     where: {
-      tenantId,
-      ...(schoolId ? { schoolId } : {}),
+      schoolId,
+      ...(schooljaar ? { schooljaar } : {}),
     },
-    include: {
-      _count: { select: { acties: true } },
-    },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ fase: 'asc' }, { createdAt: 'asc' }],
   });
 }
 
-export async function getCyclus(tenantId: string, id: string) {
-  const cyclus = await prisma.pdcaCyclus.findFirst({
-    where: { id, tenantId },
-    include: { acties: { orderBy: { createdAt: 'asc' } } },
-  });
-  if (!cyclus) throw new NotFoundError('PdcaCyclus');
-  return cyclus;
+export async function getPdcaItem(id: string) {
+  const item = await prisma.pdcaItem.findUnique({ where: { id } });
+  if (!item) throw new NotFoundError('PDCA item');
+  return item;
 }
 
-export async function createCyclus(
-  tenantId: string,
-  userId: string,
-  data: {
-    schoolId: string;
-    titel: string;
-    beschrijving?: string;
-    schooljaar: string;
-    fase?: string;
-    status?: string;
-    startDatum?: Date;
-    eindDatum?: Date;
-  },
-) {
-  return prisma.pdcaCyclus.create({
+export async function createPdcaItem(data: {
+  schoolId: string;
+  schooljaar: string;
+  fase: PdcaFase;
+  titel: string;
+  beschrijving?: string;
+  deadline?: string;
+}) {
+  return prisma.pdcaItem.create({
     data: {
-      tenantId,
-      createdBy: userId,
       schoolId: data.schoolId,
-      titel: data.titel,
-      beschrijving: data.beschrijving ?? '',
       schooljaar: data.schooljaar,
-      fase: data.fase as any,
-      status: data.status as any,
-      startDatum: data.startDatum,
-      eindDatum: data.eindDatum,
-    },
-  });
-}
-
-export async function updateCyclus(
-  tenantId: string,
-  id: string,
-  data: {
-    titel?: string;
-    beschrijving?: string;
-    schooljaar?: string;
-    fase?: string;
-    status?: string;
-    startDatum?: Date;
-    eindDatum?: Date;
-  },
-) {
-  await getCyclus(tenantId, id);
-  return prisma.pdcaCyclus.update({ where: { id }, data: data as any });
-}
-
-export async function deleteCyclus(tenantId: string, id: string) {
-  await getCyclus(tenantId, id);
-  return prisma.pdcaCyclus.delete({ where: { id } });
-}
-
-export async function addActie(
-  cyclusId: string,
-  data: {
-    fase: string;
-    titel: string;
-    beschrijving?: string;
-    verantwoordelijke?: string;
-    deadline?: Date;
-  },
-) {
-  return prisma.pdcaActie.create({
-    data: {
-      cyclusId,
-      fase: data.fase as any,
+      fase: data.fase,
       titel: data.titel,
       beschrijving: data.beschrijving ?? '',
-      verantwoordelijke: data.verantwoordelijke,
-      deadline: data.deadline,
+      deadline: data.deadline ? new Date(data.deadline) : null,
     },
   });
 }
 
-export async function updateActie(
-  id: string,
-  data: {
-    titel?: string;
-    beschrijving?: string;
-    fase?: string;
-    verantwoordelijke?: string;
-    deadline?: Date;
-    afgerond?: boolean;
-  },
-) {
-  const actie = await prisma.pdcaActie.findUnique({ where: { id } });
-  if (!actie) throw new NotFoundError('PdcaActie');
-  return prisma.pdcaActie.update({ where: { id }, data: data as any });
+export async function updatePdcaItem(id: string, data: {
+  titel?: string;
+  beschrijving?: string;
+  status?: PdcaStatus;
+  deadline?: string | null;
+}) {
+  await getPdcaItem(id);
+  return prisma.pdcaItem.update({
+    where: { id },
+    data: {
+      ...(data.titel !== undefined && { titel: data.titel }),
+      ...(data.beschrijving !== undefined && { beschrijving: data.beschrijving }),
+      ...(data.status !== undefined && { status: data.status }),
+      ...(data.deadline !== undefined && { deadline: data.deadline ? new Date(data.deadline) : null }),
+    },
+  });
 }
 
-export async function deleteActie(id: string) {
-  const actie = await prisma.pdcaActie.findUnique({ where: { id } });
-  if (!actie) throw new NotFoundError('PdcaActie');
-  return prisma.pdcaActie.delete({ where: { id } });
+export async function deletePdcaItem(id: string) {
+  await getPdcaItem(id);
+  return prisma.pdcaItem.delete({ where: { id } });
+}
+
+export async function getPdcaCycleStatus(schoolId: string, schooljaar: string) {
+  const items = await prisma.pdcaItem.findMany({
+    where: { schoolId, schooljaar },
+  });
+
+  const phases: PdcaFase[] = ['PLAN', 'DO', 'CHECK', 'ACT'];
+  return phases.map((fase) => {
+    const phaseItems = items.filter((i) => i.fase === fase);
+    const completedItems = phaseItems.filter((i) => i.status === 'AFGEROND');
+    return {
+      fase,
+      totalItems: phaseItems.length,
+      completedItems: completedItems.length,
+      hasItems: phaseItems.length > 0,
+      isComplete: phaseItems.length > 0 && phaseItems.every((i) => i.status === 'AFGEROND'),
+    };
+  });
 }

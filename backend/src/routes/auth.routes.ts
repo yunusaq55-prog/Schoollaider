@@ -5,7 +5,6 @@ import { authenticate } from '../middleware/auth.js';
 const router = Router();
 
 router.post('/login', async (req, res, next) => {
-  console.log(`[ROUTE] POST /login - body:`, { email: req.body?.email, hasPassword: !!req.body?.password });
   try {
     const { accessToken, refreshToken, user } = await authService.login(req.body);
 
@@ -13,14 +12,12 @@ router.post('/login', async (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/api/auth/refresh',
     });
 
-    console.log(`[ROUTE] Login OK - user: ${user.email}, role: ${user.role}`);
     res.json({ accessToken, user });
   } catch (err) {
-    console.log(`[ROUTE] Login FOUT:`, (err as Error).message);
     next(err);
   }
 });

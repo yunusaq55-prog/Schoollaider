@@ -1,133 +1,184 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../../api/client';
-import type { FormatieData } from '@schoollaider/shared';
+import { useSchoolContext } from '../../context/SchoolContext';
+import { DashboardSkeleton } from '../../components/ui/Skeleton';
+import { hrScoreColor } from '../../components/HrRisicoBadge';
+import { Building2, Save, UserCheck } from 'lucide-react';
+import type { FormatieData, CreateFormatieRequest } from '@schoollaider/shared';
+
+function generateSchoolYears(): string[] {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const startYear = now.getMonth() >= 7 ? currentYear : currentYear - 1;
+  return [
+    `${startYear}-${startYear + 1}`,
+    `${startYear - 1}-${startYear}`,
+    `${startYear - 2}-${startYear - 1}`,
+  ];
+}
+
+const emptyForm: CreateFormatieRequest = {
+  schooljaar: '',
+  begroteFte: 0,
+  ingevuldeFte: 0,
+  vacatures: 0,
+  tijdelijkPct: 0,
+  fteLeerkracht: 0,
+  fteOop: 0,
+  fteDirectie: 0,
+};
 
 export function HrFormatiePage() {
-  const [schools, setSchools] = useState<{ id: string; naam: string }[]>([]);
-  const [selectedSchool, setSelectedSchool] = useState('');
-  const [schooljaar, setSchooljaar] = useState('2025-2026');
-  const [formatie, setFormatie] = useState<FormatieData | null>(null);
-  const [loading, setLoading] = useState(false);
+  const { selectedSchoolId, selectedSchool } = useSchoolContext();
+  const schoolYears = generateSchoolYears();
+  const [schooljaar, setSchooljaar] = useState(schoolYears[0]);
+  const [data, setData] = useState<FormatieData | null>(null);
+  const [form, setForm] = useState<CreateFormatieRequest>({ ...emptyForm, schooljaar: schoolYears[0] });
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    begroteFte: 0, ingevuldeFte: 0, vacatures: 0, tijdelijkPct: 0,
-    fteLeerkracht: 0, fteOop: 0, fteDirectie: 0,
-  });
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    api.get('/schools').then(({ data }) => {
-      setSchools(data);
-      if (data.length > 0) setSelectedSchool(data[0].id);
-    });
-  }, []);
+    if (selectedSchoolId) fetchData();
+  }, [selectedSchoolId, schooljaar]);
 
-  useEffect(() => {
-    if (!selectedSchool) return;
+  async function fetchData() {
     setLoading(true);
-    api.get(`/hr/school/${selectedSchool}/formatie`, { params: { schooljaar } })
-      .then(({ data }) => {
-        setFormatie(data);
-        if (data) {
-          setForm({
-            begroteFte: data.begroteFte, ingevuldeFte: data.ingevuldeFte,
-            vacatures: data.vacatures, tijdelijkPct: data.tijdelijkPct,
-            fteLeerkracht: data.fteLeerkracht, fteOop: data.fteOop, fteDirectie: data.fteDirectie,
-          });
-        }
-      })
-      .catch(() => setFormatie(null))
-      .finally(() => setLoading(false));
-  }, [selectedSchool, schooljaar]);
-
-  const save = async () => {
-    setSaving(true);
     try {
-      const { data } = await api.put(`/hr/school/${selectedSchool}/formatie`, { ...form, schooljaar });
-      setFormatie(data);
-    } catch { /* */ }
-    setSaving(false);
-  };
+      const res = await api.get(`/hr/school/${selectedSchoolId}/formatie?schooljaar=${schooljaar}`);
+      const d: FormatieData | null = res.data;
+      setData(d);
+      if (d) {
+        setForm({
+          schooljaar: d.schooljaar,
+          begroteFte: d.begroteFte,
+          ingevuldeFte: d.ingevuldeFte,
+          vacatures: d.vacatures,
+          tijdelijkPct: d.tijdelijkPct,
+          fteLeerkracht: d.fteLeerkracht,
+          fteOop: d.fteOop,
+          fteDirectie: d.fteDirectie,
+        });
+      } else {
+        setForm({ ...emptyForm, schooljaar });
+      }
+    } catch (err: any) {
+      console.error('[HrFormatie] Ophalen mislukt:', err?.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const field = (label: string, key: keyof typeof form, step = 0.1) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700">{label}</label>
-      <input
-        type="number"
-        step={step}
-        value={form[key]}
-        onChange={(e) => setForm({ ...form, [key]: parseFloat(e.target.value) || 0 })}
-        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-      />
-    </div>
-  );
+  async function handleSave() {
+    if (!selectedSchoolId) return;
+    setSaving(true);
+    setSaved(false);
+    try {
+      const res = await api.put(`/hr/school/${selectedSchoolId}/formatie`, form);
+      setData(res.data);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      console.error('[HrFormatie] Opslaan mislukt:', err?.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function updateField(field: keyof CreateFormatieRequest, value: number) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  if (!selectedSchoolId) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <Building2 className="mb-4 h-10 w-10 text-gray-300" />
+        <p className="text-sm font-medium text-gray-900">Geen school geselecteerd</p>
+        <p className="mt-1 text-sm text-gray-500">Selecteer een school om formatie-data in te voeren.</p>
+      </div>
+    );
+  }
+
+  if (loading) return <DashboardSkeleton />;
+
+  const fteTekort = form.begroteFte - form.ingevuldeFte;
+  const kpis = [
+    { label: 'FTE Tekort/Overschot', value: fteTekort > 0 ? `-${fteTekort.toFixed(1)}` : `+${Math.abs(fteTekort).toFixed(1)}`, color: fteTekort > 0 ? 'text-red-700' : 'text-emerald-700' },
+    { label: '% Tijdelijk', value: `${form.tijdelijkPct.toFixed(0)}%`, color: form.tijdelijkPct > 20 ? 'text-amber-700' : 'text-gray-700' },
+    { label: 'Vacatures', value: form.vacatures.toString(), color: form.vacatures > 2 ? 'text-red-700' : 'text-gray-700' },
+    { label: 'Capaciteitsscore', value: data?.capaciteitsScore?.toString() ?? '-', color: data ? hrScoreColor(data.capaciteitsScore).text : 'text-gray-400' },
+  ];
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900">Formatie & Capaciteit</h1>
-      <p className="mt-1 text-sm text-gray-500">FTE verdeling en bezetting per school</p>
-
-      <div className="mt-6 flex gap-4">
-        <select value={selectedSchool} onChange={(e) => setSelectedSchool(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-          {schools.map((s) => <option key={s.id} value={s.id}>{s.naam}</option>)}
-        </select>
-        <select value={schooljaar} onChange={(e) => setSchooljaar(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-          <option>2024-2025</option>
-          <option>2025-2026</option>
-          <option>2026-2027</option>
+    <div className="animate-fade-in space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <UserCheck className="h-6 w-6 text-primary-600" />
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+            Formatie & Capaciteit
+          </h1>
+        </div>
+        <select
+          value={schooljaar}
+          onChange={(e) => { setSchooljaar(e.target.value); setForm((prev) => ({ ...prev, schooljaar: e.target.value })); }}
+          className="input w-44"
+        >
+          {schoolYears.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
       </div>
 
-      {loading ? (
-        <div className="mt-6 h-64 animate-pulse rounded-lg bg-gray-200" />
-      ) : (
-        <>
-          {/* KPI's */}
-          {formatie && (
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
-              <div className="rounded-lg bg-white p-4 shadow">
-                <p className="text-xs text-gray-500">FTE Tekort</p>
-                <p className={`text-xl font-bold ${formatie.begroteFte - formatie.ingevuldeFte > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {(formatie.begroteFte - formatie.ingevuldeFte).toFixed(1)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-white p-4 shadow">
-                <p className="text-xs text-gray-500">Vacatures</p>
-                <p className="text-xl font-bold text-gray-900">{formatie.vacatures}</p>
-              </div>
-              <div className="rounded-lg bg-white p-4 shadow">
-                <p className="text-xs text-gray-500">% Tijdelijk</p>
-                <p className="text-xl font-bold text-gray-900">{formatie.tijdelijkPct}%</p>
-              </div>
-              <div className="rounded-lg bg-white p-4 shadow">
-                <p className="text-xs text-gray-500">Capaciteitsscore</p>
-                <p className={`text-xl font-bold ${formatie.capaciteitsScore >= 70 ? 'text-green-600' : formatie.capaciteitsScore >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-                  {formatie.capaciteitsScore}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Formulier */}
-          <div className="mt-6 rounded-lg bg-white p-6 shadow">
-            <h3 className="mb-4 text-lg font-medium text-gray-900">Formatiegegevens invoeren</h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {field('Begrote FTE', 'begroteFte')}
-              {field('Ingevulde FTE', 'ingevuldeFte')}
-              {field('Vacatures', 'vacatures', 1)}
-              {field('% Tijdelijke contracten', 'tijdelijkPct')}
-              {field('FTE Leerkrachten', 'fteLeerkracht')}
-              {field('FTE OOP', 'fteOop')}
-              {field('FTE Directie', 'fteDirectie')}
-            </div>
-            <button onClick={save} disabled={saving}
-              className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-              {saving ? 'Opslaan...' : 'Opslaan'}
-            </button>
+      {/* KPI row */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {kpis.map((kpi) => (
+          <div key={kpi.label} className="card p-5">
+            <p className="text-xs font-medium text-gray-500">{kpi.label}</p>
+            <p className={`mt-1 text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
           </div>
-        </>
-      )}
+        ))}
+      </div>
+
+      {/* Form */}
+      <div className="card p-6">
+        <h2 className="mb-4 text-sm font-semibold text-gray-900">Formatiegegevens {schooljaar}</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <FormField label="Begrote FTE" value={form.begroteFte} onChange={(v) => updateField('begroteFte', v)} step={0.1} />
+          <FormField label="Ingevulde FTE" value={form.ingevuldeFte} onChange={(v) => updateField('ingevuldeFte', v)} step={0.1} />
+          <FormField label="Vacatures" value={form.vacatures} onChange={(v) => updateField('vacatures', v)} step={1} />
+          <FormField label="% Tijdelijk" value={form.tijdelijkPct} onChange={(v) => updateField('tijdelijkPct', v)} step={1} />
+        </div>
+        <h3 className="mb-3 mt-6 text-sm font-semibold text-gray-700">FTE Verdeling</h3>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <FormField label="FTE Leerkrachten" value={form.fteLeerkracht} onChange={(v) => updateField('fteLeerkracht', v)} step={0.1} />
+          <FormField label="FTE OOP" value={form.fteOop} onChange={(v) => updateField('fteOop', v)} step={0.1} />
+          <FormField label="FTE Directie" value={form.fteDirectie} onChange={(v) => updateField('fteDirectie', v)} step={0.1} />
+        </div>
+        <div className="mt-6 flex items-center gap-3">
+          <button onClick={handleSave} disabled={saving} className="btn-primary">
+            <Save className="h-4 w-4" />
+            {saving ? 'Opslaan...' : 'Opslaan'}
+          </button>
+          {saved && <span className="text-sm text-emerald-600">Opgeslagen!</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FormField({
+  label, value, onChange, step = 1,
+}: {
+  label: string; value: number; onChange: (v: number) => void; step?: number;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
+      <input
+        type="number"
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+        className="input w-full"
+      />
     </div>
   );
 }

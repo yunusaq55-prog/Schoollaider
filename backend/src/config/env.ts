@@ -11,6 +11,12 @@ const envSchema = z.object({
   S3_ACCESS_KEY: z.string().default('minioadmin'),
   S3_SECRET_KEY: z.string().default('minioadmin123'),
   S3_BUCKET: z.string().default('schoollaider-documents'),
+  // AI / LLM
+  OPENAI_API_KEY: z.string().default(''),
+  AI_ENABLED: z.coerce.boolean().default(false),
+  AI_MODEL: z.string().default('gpt-4o'),
+  // Redis (for job queue)
+  REDIS_URL: z.string().default('redis://localhost:6379'),
 });
 
 const parsed = envSchema.safeParse(process.env);

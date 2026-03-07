@@ -3,15 +3,19 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { initBucket } from './utils/s3.js';
 import authRoutes from './routes/auth.routes.js';
 import tenantRoutes from './routes/tenant.routes.js';
 import schoolRoutes from './routes/school.routes.js';
 import userRoutes from './routes/user.routes.js';
 import documentRoutes from './routes/document.routes.js';
+import inspectieRoutes from './routes/inspectie.routes.js';
 import pdcaRoutes from './routes/pdca.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
+import exportRoutes from './routes/export.routes.js';
+import analysisRoutes from './routes/analysis.routes.js';
 import hrRoutes from './routes/hr.routes.js';
-import inspectieRoutes from './routes/inspectie.routes.js';
+import { startAnalysisWorker } from './services/ai/queue.js';
 
 const app = express();
 
@@ -33,14 +37,38 @@ app.use('/api/tenants', tenantRoutes);
 app.use('/api/schools', schoolRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/inspectie', inspectieRoutes);
 app.use('/api/pdca', pdcaRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/export', exportRoutes);
+app.use('/api/analysis', analysisRoutes);
 app.use('/api/hr', hrRoutes);
-app.use('/api/inspectie', inspectieRoutes);
 
 // Error handling
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
-  console.log(`SchoollAIder API draait op http://localhost:${env.PORT}`);
-});
+// Start server
+async function start() {
+  try {
+    await initBucket();
+    console.log('S3 bucket gereed');
+  } catch (err) {
+    console.warn('S3 bucket init overgeslagen (MinIO niet beschikbaar):', (err as Error).message);
+  }
+
+  // Start AI analysis worker if enabled
+  if (env.AI_ENABLED) {
+    try {
+      startAnalysisWorker();
+      console.log('AI analyse worker gestart');
+    } catch (err) {
+      console.warn('AI worker niet gestart:', (err as Error).message);
+    }
+  }
+
+  app.listen(env.PORT, () => {
+    console.log(`SchoollAIder API draait op http://localhost:${env.PORT}`);
+  });
+}
+
+start();

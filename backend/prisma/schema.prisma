@@ -15,6 +15,80 @@ enum Role {
   SCHOOL_GEBRUIKER
 }
 
+enum SchoolStatus {
+  ACTIEF
+  GEARCHIVEERD
+}
+
+enum DocumentType {
+  SCHOOLPLAN
+  JAARPLAN
+  VEILIGHEIDSBELEID
+  SCHOOLGIDS
+  SOP
+  EVALUATIE
+  OVERIG
+  // Kwaliteitsmodule document types
+  PEDAGOGISCH_BELEIDSPLAN
+  RESULTATENANALYSE
+  IB_JAARVERSLAG
+  AUDITRAPPORT
+  RIE
+  OUDERCOMMISSIE_REGLEMENT
+}
+
+enum DocumentStatus {
+  ACTUEEL
+  VERLOPEN
+  CONCEPT
+}
+
+enum BewijsStatus {
+  AANTOONBAAR
+  ONVOLLEDIG
+  ONTBREEKT
+}
+
+enum PdcaFase {
+  PLAN
+  DO
+  CHECK
+  ACT
+}
+
+enum PdcaStatus {
+  NIET_GESTART
+  BEZIG
+  AFGEROND
+}
+
+enum AnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum AiSourceType {
+  MANUAL
+  AI_GENERATED
+  AI_ASSISTED
+}
+
+enum HrRisico {
+  STABIEL
+  KWETSBAAR
+  HOOG_RISICO
+}
+
+enum HrSignaalStatus {
+  OPEN
+  IN_BEHANDELING
+  AFGEHANDELD
+}
+
+// ─── Core models ────────────────────────────────────────────
+
 model Tenant {
   id        String   @id @default(uuid())
   naam      String
@@ -24,32 +98,37 @@ model Tenant {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  schools    School[]
-  users      User[]
-  documents  Document[]
-  pdcaCycli  PdcaCyclus[]
+  schools   School[]
+  users     User[]
+  documents Document[]
 
   @@map("tenants")
 }
 
 model School {
-  id        String   @id @default(uuid())
-  tenantId  String   @map("tenant_id")
-  naam      String
-  brinCode  String   @map("brin_code")
-  adres     String
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id             String       @id @default(uuid())
+  tenantId       String       @map("tenant_id")
+  naam           String
+  brinCode       String       @map("brin_code")
+  adres          String
+  directeur      String       @default("")
+  leerlingaantal Int          @default(0) @map("leerling_aantal")
+  status         SchoolStatus @default(ACTIEF)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
 
-  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  users          User[]
-  documents      Document[]
-  pdcaCycli      PdcaCyclus[]
-  hrFormatie      HrFormatie[]
-  hrVerzuim       HrVerzuim[]
-  hrVervanging    HrVervanging[]
-  hrLeeftijd      HrLeeftijd[]
-  hrSignalen      HrSignaal[]
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users             User[]
+  documents         Document[]
+  standaardStatuses SchoolStandaardStatus[]
+  pdcaItems         PdcaItem[]
+  readinessScores   ReadinessScore[]
+  pdcaSuggestions   PdcaSuggestion[]
+  hrFormatie        HrFormatie[]
+  hrVerzuim         HrVerzuim[]
+  hrVervanging      HrVervanging[]
+  hrLeeftijd        HrLeeftijd[]
+  hrSignalen        HrSignaal[]
 
   @@map("schools")
 }
@@ -66,96 +145,256 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  school     School?      @relation(fields: [schoolId], references: [id], onDelete: SetNull)
-  documents  Document[]
-  pdcaCycli  PdcaCyclus[]
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  school           School?           @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  documents        Document[]
+  documentVersions DocumentVersion[]
 
   @@map("users")
 }
 
+// ─── Document models ────────────────────────────────────────
+
 model Document {
-  id          String   @id @default(uuid())
-  tenantId    String   @map("tenant_id")
-  schoolId    String   @map("school_id")
-  titel       String
+  id           String         @id @default(uuid())
+  tenantId     String         @map("tenant_id")
+  schoolId     String         @map("school_id")
+  titel        String
   beschrijving String
-  s3Key       String   @map("s3_key")
-  type        String
-  uploadedBy  String   @map("uploaded_by")
-  versie      Int      @default(1)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  s3Key        String         @map("s3_key")
+  type         DocumentType
+  status       DocumentStatus @default(CONCEPT)
+  uploadedBy   String         @map("uploaded_by")
+  versie       Int            @default(1)
+  vervaltDatum DateTime?      @map("vervalt_datum")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [uploadedBy], references: [id])
+  tenant         Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  school         School                  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user           User                    @relation(fields: [uploadedBy], references: [id])
+  versions       DocumentVersion[]
+  standaardLinks DocumentStandaardLink[]
+  analyses       DocumentAnalysis[]
 
+  @@index([tenantId, schoolId, type])
   @@map("documents")
 }
 
-// ─── PDCA Kwaliteitscyclus ────────────────────
+model DocumentVersion {
+  id         String   @id @default(uuid())
+  documentId String   @map("document_id")
+  versie     Int
+  s3Key      String   @map("s3_key")
+  uploadedBy String   @map("uploaded_by")
+  opmerking  String   @default("")
+  createdAt  DateTime @default(now()) @map("created_at")
 
-enum PdcaFase {
-  PLAN
-  DO
-  CHECK
-  ACT
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [uploadedBy], references: [id])
+
+  @@map("document_versions")
 }
 
-enum PdcaStatus {
-  CONCEPT
-  ACTIEF
-  AFGEROND
+model DocumentStandaardLink {
+  id          String @id @default(uuid())
+  documentId  String @map("document_id")
+  standaardId String @map("standaard_id")
+
+  document  Document           @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  standaard InspectieStandaard @relation(fields: [standaardId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, standaardId])
+  @@map("document_standaard_links")
 }
 
-model PdcaCyclus {
-  id            String     @id @default(uuid())
-  tenantId      String     @map("tenant_id")
-  schoolId      String     @map("school_id")
-  titel         String
-  beschrijving  String
-  schooljaar    String
-  fase          PdcaFase   @default(PLAN)
-  status        PdcaStatus @default(CONCEPT)
-  startDatum    DateTime?  @map("start_datum")
-  eindDatum     DateTime?  @map("eind_datum")
-  createdBy     String     @map("created_by")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
+// ─── Inspection framework models ────────────────────────────
 
-  tenant  Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  school  School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  creator User         @relation(fields: [createdBy], references: [id])
-  acties  PdcaActie[]
-
-  @@map("pdca_cycli")
-}
-
-model PdcaActie {
-  id           String     @id @default(uuid())
-  cyclusId     String     @map("cyclus_id")
-  fase         PdcaFase
-  titel        String
+model InspectieDomein {
+  id           String @id @default(uuid())
+  code         String @unique
+  naam         String
   beschrijving String
-  verantwoordelijke String @default("")
-  deadline     DateTime?
-  afgerond     Boolean    @default(false)
-  createdAt    DateTime   @default(now()) @map("created_at")
-  updatedAt    DateTime   @updatedAt @map("updated_at")
+  versie       String
 
-  cyclus PdcaCyclus @relation(fields: [cyclusId], references: [id], onDelete: Cascade)
+  standaarden InspectieStandaard[]
 
-  @@map("pdca_acties")
+  @@map("inspectie_domeinen")
 }
 
-// ─── HR Module ────────────────────────────────
+model InspectieStandaard {
+  id           String @id @default(uuid())
+  domeinId     String @map("domein_id")
+  code         String @unique
+  naam         String
+  beschrijving String
+  toelichting  String @default("")
+  gewicht      Int    @default(1)
 
-enum HrSignaalStatus {
-  OPEN
-  IN_BEHANDELING
-  AFGEHANDELD
+  domein         InspectieDomein         @relation(fields: [domeinId], references: [id], onDelete: Cascade)
+  schoolStatuses SchoolStandaardStatus[]
+  documentLinks  DocumentStandaardLink[]
+  sectionLinks   SectionStandaardLink[]
+
+  @@map("inspectie_standaarden")
 }
+
+model SchoolStandaardStatus {
+  id          String       @id @default(uuid())
+  schoolId    String       @map("school_id")
+  standaardId String       @map("standaard_id")
+  status      BewijsStatus @default(ONTBREEKT)
+  bewijs      String       @default("")
+  evaluatie   String       @default("")
+  actueel     Boolean      @default(false)
+  opmerking   String       @default("")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  school    School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  standaard InspectieStandaard @relation(fields: [standaardId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, standaardId])
+  @@map("school_standaard_statuses")
+}
+
+// ─── PDCA models ────────────────────────────────────────────
+
+model PdcaItem {
+  id             String       @id @default(uuid())
+  schoolId       String       @map("school_id")
+  schooljaar     String
+  fase           PdcaFase
+  titel          String
+  beschrijving   String       @default("")
+  status         PdcaStatus   @default(NIET_GESTART)
+  deadline       DateTime?
+  bron           AiSourceType @default(MANUAL)
+  bronDocumentId String?      @map("bron_document_id")
+  vertrouwen     Float?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  school          School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  fromSuggestions PdcaSuggestion[]
+
+  @@index([schoolId, schooljaar])
+  @@map("pdca_items")
+}
+
+model PdcaSuggestion {
+  id             String   @id @default(uuid())
+  schoolId       String   @map("school_id")
+  schooljaar     String
+  fase           PdcaFase
+  titel          String
+  beschrijving   String   @default("") @db.Text
+  bronDocumentId String?  @map("bron_document_id")
+  bronSectie     String?  @map("bron_sectie")
+  vertrouwen     Float    @default(0)
+  status         String   @default("pending") // pending, accepted, dismissed
+  pdcaItemId     String?  @map("pdca_item_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  school   School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  pdcaItem PdcaItem? @relation(fields: [pdcaItemId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, schooljaar, status])
+  @@map("pdca_suggestions")
+}
+
+// ─── Readiness models ───────────────────────────────────────
+
+model ReadinessScore {
+  id           String   @id @default(uuid())
+  schoolId     String   @map("school_id")
+  totalScore   Float    @map("total_score")
+  domainScores Json     @map("domain_scores")
+  berekendOp   DateTime @default(now()) @map("berekend_op")
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@map("readiness_scores")
+}
+
+// ─── AI Analysis models ─────────────────────────────────────
+
+model DocumentAnalysis {
+  id              String         @id @default(uuid())
+  documentId      String         @map("document_id")
+  documentVersion Int            @map("document_version")
+  status          AnalysisStatus @default(PENDING)
+  extractedText   String?        @map("extracted_text") @db.Text
+  sections        Json?
+  mappings        Json?
+  gaps            Json?
+  overlaps        Json?
+  summary         String?        @db.Text
+  tokenCount      Int?           @map("token_count")
+  costCents       Int?           @map("cost_cents")
+  errorMessage    String?        @map("error_message") @db.Text
+  startedAt       DateTime?      @map("started_at")
+  completedAt     DateTime?      @map("completed_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+
+  document        Document          @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentSections DocumentSection[]
+
+  @@unique([documentId, documentVersion])
+  @@index([documentId])
+  @@map("document_analyses")
+}
+
+model DocumentSection {
+  id          String   @id @default(uuid())
+  analysisId  String   @map("analysis_id")
+  titel       String
+  inhoud      String   @db.Text
+  startPagina Int?     @map("start_pagina")
+  eindPagina  Int?     @map("eind_pagina")
+  volgorde    Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  analysis       DocumentAnalysis       @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  standaardLinks SectionStandaardLink[]
+
+  @@index([analysisId])
+  @@map("document_sections")
+}
+
+model SectionStandaardLink {
+  id          String @id @default(uuid())
+  sectionId   String @map("section_id")
+  standaardId String @map("standaard_id")
+  relevance   Float  @default(0)
+  evidence    String @default("") @db.Text
+
+  section   DocumentSection    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  standaard InspectieStandaard @relation(fields: [standaardId], references: [id], onDelete: Cascade)
+
+  @@unique([sectionId, standaardId])
+  @@map("section_standaard_links")
+}
+
+model AnalysisJob {
+  id           String         @id @default(uuid())
+  tenantId     String         @map("tenant_id")
+  documentId   String         @map("document_id")
+  jobType      String         @default("full_analysis") @map("job_type")
+  status       AnalysisStatus @default(PENDING)
+  progress     Int            @default(0)
+  resultId     String?        @map("result_id")
+  errorMessage String?        @map("error_message")
+  attempts     Int            @default(0)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  @@index([tenantId, status])
+  @@index([documentId])
+  @@map("analysis_jobs")
+}
+
+// ─── HR Module models ──────────────────────────────────────
 
 model HrFormatie {
   id               String   @id @default(uuid())
@@ -175,6 +414,7 @@ model HrFormatie {
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, schooljaar])
+  @@index([schoolId])
   @@map("hr_formatie")
 }
 
@@ -193,6 +433,7 @@ model HrVerzuim {
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, periode])
+  @@index([schoolId])
   @@map("hr_verzuim")
 }
 
@@ -211,6 +452,7 @@ model HrVervanging {
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, schooljaar])
+  @@index([schoolId])
   @@map("hr_vervanging")
 }
 
@@ -230,6 +472,7 @@ model HrLeeftijd {
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
   @@unique([schoolId, schooljaar])
+  @@index([schoolId])
   @@map("hr_leeftijd")
 }
 
@@ -238,8 +481,8 @@ model HrSignaal {
   schoolId        String          @map("school_id")
   type            String
   titel           String
-  beschrijving    String
-  aanbevolenActie String          @default("") @map("aanbevolen_actie")
+  beschrijving    String          @db.Text
+  aanbevolenActie String          @default("") @map("aanbevolen_actie") @db.Text
   deadline        DateTime?
   status          HrSignaalStatus @default(OPEN)
   createdAt       DateTime        @default(now()) @map("created_at")
@@ -249,31 +492,4 @@ model HrSignaal {
 
   @@index([schoolId, status])
   @@map("hr_signalen")
-}
-
-// ─── Inspectiekader ───────────────────────────
-
-model InspectieDomein {
-  id          String @id @default(uuid())
-  code        String @unique
-  naam        String
-  beschrijving String
-  versie      String
-
-  standaarden InspectieStandaard[]
-
-  @@map("inspectie_domeinen")
-}
-
-model InspectieStandaard {
-  id          String @id @default(uuid())
-  domeinId    String @map("domein_id")
-  code        String @unique
-  naam        String
-  beschrijving String
-  toelichting String @default("")
-
-  domein InspectieDomein @relation(fields: [domeinId], references: [id], onDelete: Cascade)
-
-  @@map("inspectie_standaarden")
 }

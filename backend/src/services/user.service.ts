@@ -1,23 +1,25 @@
 import prisma from '../utils/prisma.js';
 import { NotFoundError } from '../utils/errors.js';
 
+const userSelect = {
+  id: true,
+  email: true,
+  naam: true,
+  role: true,
+  tenantId: true,
+  schoolId: true,
+  active: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 export async function listUsers(tenantId: string, schoolId?: string) {
   return prisma.user.findMany({
     where: {
       tenantId,
       ...(schoolId ? { schoolId } : {}),
     },
-    select: {
-      id: true,
-      email: true,
-      naam: true,
-      role: true,
-      tenantId: true,
-      schoolId: true,
-      active: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+    select: userSelect,
     orderBy: { naam: 'asc' },
   });
 }
@@ -25,17 +27,7 @@ export async function listUsers(tenantId: string, schoolId?: string) {
 export async function getUser(tenantId: string, id: string) {
   const user = await prisma.user.findFirst({
     where: { id, tenantId },
-    select: {
-      id: true,
-      email: true,
-      naam: true,
-      role: true,
-      tenantId: true,
-      schoolId: true,
-      active: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+    select: userSelect,
   });
   if (!user) throw new NotFoundError('Gebruiker');
   return user;
@@ -51,17 +43,7 @@ export async function updateUser(tenantId: string, id: string, data: { naam?: st
       ...(data.active !== undefined && { active: data.active }),
       ...(data.schoolId !== undefined && { schoolId: data.schoolId }),
     },
-    select: {
-      id: true,
-      email: true,
-      naam: true,
-      role: true,
-      tenantId: true,
-      schoolId: true,
-      active: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+    select: userSelect,
   });
 }
 

@@ -1,81 +1,99 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { requirePermission } from '../middleware/rbac.js';
 import { tenantContext } from '../middleware/tenantContext.js';
 import * as pdcaService from '../services/pdca.service.js';
+import * as pdcaGenerator from '../services/ai/pdca-generator.service.js';
+import { requirePermission } from '../middleware/rbac.js';
 
 const router = Router();
 
 router.use(authenticate, tenantContext);
 
-router.get('/', requirePermission('kwaliteit:view'), async (req, res, next) => {
+router.get('/school/:schoolId', async (req, res, next) => {
   try {
-    const schoolId = req.query.schoolId as string | undefined;
-    const cycli = await pdcaService.listCycli(req.user!.tenantId, schoolId);
-    res.json(cycli);
+    const schooljaar = req.query.schooljaar as string | undefined;
+    const items = await pdcaService.listPdcaItems(req.params.schoolId, schooljaar);
+    res.json(items);
   } catch (err) {
     next(err);
   }
 });
 
-router.get('/:id', requirePermission('kwaliteit:view'), async (req, res, next) => {
+router.get('/school/:schoolId/cycle-status', async (req, res, next) => {
   try {
-    const cyclus = await pdcaService.getCyclus(req.user!.tenantId, req.params.id);
-    res.json(cyclus);
+    const schooljaar = (req.query.schooljaar as string) ?? pdcaService.getCurrentSchoolYear();
+    const status = await pdcaService.getPdcaCycleStatus(req.params.schoolId, schooljaar);
+    res.json(status);
   } catch (err) {
     next(err);
   }
 });
 
-router.post('/', requirePermission('kwaliteit:manage'), async (req, res, next) => {
+router.post('/school/:schoolId', async (req, res, next) => {
   try {
-    const cyclus = await pdcaService.createCyclus(req.user!.tenantId, req.user!.userId, req.body);
-    res.status(201).json(cyclus);
+    const item = await pdcaService.createPdcaItem({
+      schoolId: req.params.schoolId,
+      ...req.body,
+    });
+    res.status(201).json(item);
   } catch (err) {
     next(err);
   }
 });
 
-router.patch('/:id', requirePermission('kwaliteit:manage'), async (req, res, next) => {
+router.patch('/:id', async (req, res, next) => {
   try {
-    const cyclus = await pdcaService.updateCyclus(req.user!.tenantId, req.params.id, req.body);
-    res.json(cyclus);
+    const item = await pdcaService.updatePdcaItem(req.params.id, req.body);
+    res.json(item);
   } catch (err) {
     next(err);
   }
 });
 
-router.delete('/:id', requirePermission('kwaliteit:manage'), async (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
   try {
-    await pdcaService.deleteCyclus(req.user!.tenantId, req.params.id);
+    await pdcaService.deletePdcaItem(req.params.id);
     res.status(204).send();
   } catch (err) {
     next(err);
   }
 });
 
-router.post('/:id/acties', requirePermission('kwaliteit:manage'), async (req, res, next) => {
+// AI suggestion routes
+router.post('/school/:schoolId/generate', requirePermission('pdca:manage'), async (req, res, next) => {
   try {
-    const actie = await pdcaService.addActie(req.params.id, req.body);
-    res.status(201).json(actie);
+    const schooljaar = req.body.schooljaar as string | undefined;
+    const result = await pdcaGenerator.generateSuggestionsForSchool(req.user!.tenantId, req.params.schoolId, schooljaar);
+    res.status(201).json(result);
   } catch (err) {
     next(err);
   }
 });
 
-router.patch('/acties/:actieId', requirePermission('kwaliteit:manage'), async (req, res, next) => {
+router.get('/school/:schoolId/suggestions', async (req, res, next) => {
   try {
-    const actie = await pdcaService.updateActie(req.params.actieId, req.body);
-    res.json(actie);
+    const schooljaar = req.query.schooljaar as string | undefined;
+    const status = req.query.status as string | undefined;
+    const suggestions = await pdcaGenerator.listSuggestions(req.params.schoolId, schooljaar, status);
+    res.json(suggestions);
   } catch (err) {
     next(err);
   }
 });
 
-router.delete('/acties/:actieId', requirePermission('kwaliteit:manage'), async (req, res, next) => {
+router.post('/suggestions/:id/accept', requirePermission('pdca:manage'), async (req, res, next) => {
   try {
-    await pdcaService.deleteActie(req.params.actieId);
-    res.status(204).send();
+    const pdcaItem = await pdcaGenerator.acceptSuggestion(req.params.id);
+    res.json(pdcaItem);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/suggestions/:id/dismiss', requirePermission('pdca:manage'), async (req, res, next) => {
+  try {
+    const suggestion = await pdcaGenerator.dismissSuggestion(req.params.id);
+    res.json(suggestion);
   } catch (err) {
     next(err);
   }
