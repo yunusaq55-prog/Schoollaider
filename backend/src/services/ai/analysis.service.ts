@@ -1,7 +1,7 @@
 import prisma from '../../utils/prisma.js';
 import { env } from '../../config/env.js';
 import { NotFoundError, AppError } from '../../utils/errors.js';
-import { extractPdfFromS3 } from './pdf-extractor.js';
+import { extractPdfFromBuffer } from './pdf-extractor.js';
 import { analyzeDocument } from './llm-client.js';
 
 // ─── Start analysis ────────────────────────────────────────
@@ -62,7 +62,7 @@ export async function startDocumentAnalysis(
 
 async function processAnalysisInline(
   analysisJobId: string,
-  document: { id: string; versie: number; s3Key: string; type: string; titel: string },
+  document: { id: string; versie: number; type: string; titel: string },
 ): Promise<void> {
   try {
     // Update status → PROCESSING
@@ -81,9 +81,20 @@ async function processAnalysisInline(
       },
     });
 
-    // Step 1: Extract PDF text
+    // Step 1: Extract PDF text from database
     await prisma.analysisJob.update({ where: { id: analysisJobId }, data: { progress: 20 } });
-    const extraction = await extractPdfFromS3(document.s3Key);
+
+    const docWithFile = await prisma.document.findUnique({
+      where: { id: document.id },
+      select: { fileData: true },
+    });
+
+    if (!docWithFile?.fileData) {
+      throw new Error('Document heeft geen bestandsdata in de database');
+    }
+
+    const pdfBuffer = Buffer.from(docWithFile.fileData, 'base64');
+    const extraction = await extractPdfFromBuffer(pdfBuffer);
 
     await prisma.documentAnalysis.update({
       where: { id: analysis.id },

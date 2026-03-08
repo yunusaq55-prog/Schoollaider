@@ -3,7 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import { initBucket } from './utils/s3.js';
+// S3 no longer used — documents stored in database
 import authRoutes from './routes/auth.routes.js';
 import tenantRoutes from './routes/tenant.routes.js';
 import schoolRoutes from './routes/school.routes.js';
@@ -24,7 +24,7 @@ app.use(cors({
   origin: env.FRONTEND_URL,
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 
 // Health check
@@ -51,13 +51,6 @@ app.use(errorHandler);
 
 // Start server
 async function start() {
-  try {
-    await initBucket();
-    console.log('S3 bucket gereed');
-  } catch (err) {
-    console.warn('S3 bucket init overgeslagen (MinIO niet beschikbaar):', (err as Error).message);
-  }
-
   if (env.AI_ENABLED) {
     console.log('AI analyse ingeschakeld (inline modus, geen Redis vereist)');
   }

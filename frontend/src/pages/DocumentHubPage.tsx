@@ -103,24 +103,15 @@ export function DocumentHubPage() {
     setUploading(true);
     try {
       const docType: DocumentType = 'OVERIG';
-      const { data: uploadData } = await api.post('/documents/upload-url', {
-        schoolId: selectedSchoolId,
-        filename: file.name,
-        type: docType,
-      });
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('schoolId', selectedSchoolId);
+      formData.append('titel', file.name);
+      formData.append('beschrijving', '');
+      formData.append('type', docType);
 
-      await fetch(uploadData.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
-      });
-
-      await api.post('/documents/confirm', {
-        schoolId: selectedSchoolId,
-        s3Key: uploadData.s3Key,
-        titel: file.name,
-        beschrijving: '',
-        type: docType,
+      await api.post('/documents/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       await fetchData();
@@ -136,8 +127,18 @@ export function DocumentHubPage() {
 
   async function handleDownload(documentId: string) {
     try {
-      const { data } = await api.get(`/documents/${documentId}/download-url`);
-      window.open(data.downloadUrl, '_blank');
+      const response = await api.get(`/documents/${documentId}/download`, { responseType: 'blob' });
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const contentDisposition = response.headers['content-disposition'];
+      const filename = contentDisposition
+        ? decodeURIComponent(contentDisposition.split('filename="')[1]?.replace('"', '') || 'document')
+        : 'document';
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(url);
     } catch (err: any) {
       console.error('[DocumentHub] Download mislukt:', err?.message);
     }

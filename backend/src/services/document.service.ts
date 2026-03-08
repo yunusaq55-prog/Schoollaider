@@ -1,6 +1,5 @@
 import prisma from '../utils/prisma.js';
 import { NotFoundError } from '../utils/errors.js';
-import type { CreateDocumentRequest } from '@schoollaider/shared';
 
 export async function listDocuments(tenantId: string, schoolId?: string) {
   return prisma.document.findMany({
@@ -27,10 +26,32 @@ export async function getDocument(tenantId: string, id: string) {
   return doc;
 }
 
+export async function getDocumentWithFile(tenantId: string, id: string) {
+  const doc = await prisma.document.findFirst({
+    where: { id, tenantId },
+    select: {
+      id: true,
+      titel: true,
+      mimeType: true,
+      fileData: true,
+    },
+  });
+  if (!doc) throw new NotFoundError('Document');
+  return doc;
+}
+
 export async function createDocument(
   tenantId: string,
   userId: string,
-  data: CreateDocumentRequest & { s3Key: string },
+  data: {
+    schoolId: string;
+    titel: string;
+    beschrijving: string;
+    type: string;
+    vervaltDatum?: string;
+    fileData: string;
+    mimeType: string;
+  },
 ) {
   return prisma.document.create({
     data: {
@@ -38,8 +59,9 @@ export async function createDocument(
       schoolId: data.schoolId,
       titel: data.titel,
       beschrijving: data.beschrijving,
-      type: data.type,
-      s3Key: data.s3Key,
+      type: data.type as any,
+      fileData: data.fileData,
+      mimeType: data.mimeType,
       uploadedBy: userId,
       vervaltDatum: data.vervaltDatum ? new Date(data.vervaltDatum) : null,
     },
@@ -72,7 +94,7 @@ export async function createNewVersion(
   tenantId: string,
   userId: string,
   documentId: string,
-  s3Key: string,
+  fileData: string,
   opmerking: string = '',
 ) {
   const doc = await getDocument(tenantId, documentId);
@@ -82,7 +104,7 @@ export async function createNewVersion(
     data: {
       documentId,
       versie: doc.versie,
-      s3Key: doc.s3Key,
+      fileData: doc.fileData,
       uploadedBy: doc.uploadedBy,
       opmerking,
     },
@@ -90,7 +112,7 @@ export async function createNewVersion(
 
   return prisma.document.update({
     where: { id: documentId },
-    data: { s3Key, versie: newVersie, uploadedBy: userId },
+    data: { fileData, versie: newVersie, uploadedBy: userId },
   });
 }
 

@@ -161,7 +161,9 @@ model Document {
   schoolId     String         @map("school_id")
   titel        String
   beschrijving String
-  s3Key        String         @map("s3_key")
+  s3Key        String         @default("") @map("s3_key")
+  fileData     String?        @map("file_data") @db.Text
+  mimeType     String         @default("application/pdf") @map("mime_type")
   type         DocumentType
   status       DocumentStatus @default(CONCEPT)
   uploadedBy   String         @map("uploaded_by")
@@ -185,7 +187,8 @@ model DocumentVersion {
   id         String   @id @default(uuid())
   documentId String   @map("document_id")
   versie     Int
-  s3Key      String   @map("s3_key")
+  s3Key      String   @default("") @map("s3_key")
+  fileData   String?  @map("file_data") @db.Text
   uploadedBy String   @map("uploaded_by")
   opmerking  String   @default("")
   createdAt  DateTime @default(now()) @map("created_at")

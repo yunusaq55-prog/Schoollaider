@@ -1,13 +1,13 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/rbac.js';
 import { tenantContext } from '../middleware/tenantContext.js';
 import * as documentService from '../services/document.service.js';
 import { autoTriggerAnalysis } from '../services/ai/analysis.service.js';
-import { generateUploadUrl, generateDownloadUrl } from '../utils/s3.js';
-import { randomUUID } from 'crypto';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 router.use(authenticate, tenantContext);
 
@@ -30,20 +30,27 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.post('/upload-url', requirePermission('documents:upload'), async (req, res, next) => {
+// Direct file upload — stores file as base64 in the database
+router.post('/upload', requirePermission('documents:upload'), upload.single('file'), async (req, res, next) => {
   try {
-    const { schoolId, filename, type } = req.body;
-    const s3Key = `${req.user!.tenantId}/${schoolId}/${type}/${randomUUID()}-${filename}`;
-    const uploadUrl = await generateUploadUrl(s3Key);
-    res.json({ uploadUrl, s3Key });
-  } catch (err) {
-    next(err);
-  }
-});
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ message: 'Geen bestand ontvangen' });
+      return;
+    }
 
-router.post('/confirm', requirePermission('documents:upload'), async (req, res, next) => {
-  try {
-    const document = await documentService.createDocument(req.user!.tenantId, req.user!.userId, req.body);
+    const { schoolId, titel, beschrijving, type, vervaltDatum } = req.body;
+    const fileData = file.buffer.toString('base64');
+
+    const document = await documentService.createDocument(req.user!.tenantId, req.user!.userId, {
+      schoolId,
+      titel: titel || file.originalname,
+      beschrijving: beschrijving || '',
+      type: type || 'OVERIG',
+      vervaltDatum,
+      fileData,
+      mimeType: file.mimetype,
+    });
 
     // Auto-trigger AI analysis in the background (non-blocking)
     autoTriggerAnalysis(req.user!.tenantId, document.id).catch(() => {});
@@ -54,25 +61,61 @@ router.post('/confirm', requirePermission('documents:upload'), async (req, res, 
   }
 });
 
+// Legacy presigned URL endpoint (kept for backward compatibility but returns error if S3 is not configured)
+router.post('/upload-url', requirePermission('documents:upload'), async (_req, res) => {
+  res.status(400).json({ message: 'Gebruik /api/documents/upload voor directe upload. S3 is niet meer beschikbaar.' });
+});
+
+// Legacy confirm endpoint
+router.post('/confirm', requirePermission('documents:upload'), async (_req, res) => {
+  res.status(400).json({ message: 'Gebruik /api/documents/upload voor directe upload.' });
+});
+
+// Download file from database
+router.get('/:id/download', async (req, res, next) => {
+  try {
+    const document = await documentService.getDocumentWithFile(req.user!.tenantId, req.params.id);
+    if (!document.fileData) {
+      res.status(404).json({ message: 'Bestand niet gevonden in database' });
+      return;
+    }
+
+    const buffer = Buffer.from(document.fileData, 'base64');
+    res.setHeader('Content-Type', document.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(document.titel)}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.send(buffer);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Keep old download-url endpoint for backward compat — redirect to new download
 router.get('/:id/download-url', async (req, res, next) => {
   try {
-    const document = await documentService.getDocument(req.user!.tenantId, req.params.id);
-    const downloadUrl = await generateDownloadUrl(document.s3Key);
+    // Return a URL that points to our direct download endpoint
+    const downloadUrl = `/api/documents/${req.params.id}/download`;
     res.json({ downloadUrl });
   } catch (err) {
     next(err);
   }
 });
 
-router.post('/:id/versions', requirePermission('documents:upload'), async (req, res, next) => {
+router.post('/:id/versions', requirePermission('documents:upload'), upload.single('file'), async (req, res, next) => {
   try {
-    const { s3Key, opmerking } = req.body;
+    const file = req.file;
+    if (!file) {
+      res.status(400).json({ message: 'Geen bestand ontvangen' });
+      return;
+    }
+
+    const fileData = file.buffer.toString('base64');
     const document = await documentService.createNewVersion(
       req.user!.tenantId,
       req.user!.userId,
       req.params.id,
-      s3Key,
-      opmerking,
+      fileData,
+      req.body.opmerking || '',
     );
     res.json(document);
   } catch (err) {
