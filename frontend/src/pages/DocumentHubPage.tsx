@@ -47,7 +47,7 @@ export function DocumentHubPage() {
       const { data } = await api.get<AnalysisStatusResponse>(`/analysis/documents/${docId}/status`);
       setAnalysisStates((prev) => ({
         ...prev,
-        [docId]: { status: data.status as AnalysisStatus, progress: data.progress },
+        [docId]: { status: data.status as AnalysisStatus, progress: data.progress, errorMessage: data.errorMessage ?? undefined },
       }));
       return data;
     } catch {
@@ -255,8 +255,13 @@ export function DocumentHubPage() {
                     <td className="whitespace-nowrap px-6 py-4">
                       <DocumentStatusBadge status={doc.status} />
                     </td>
-                    <td className="whitespace-nowrap px-6 py-4">
+                    <td className="px-6 py-4">
                       <AiStatusBadge status={aiStatus} progress={analysisState?.progress} />
+                      {aiStatus === 'FAILED' && analysisState?.errorMessage && (
+                        <p className="mt-1 max-w-[200px] truncate text-[10px] text-red-500" title={analysisState.errorMessage}>
+                          {analysisState.errorMessage}
+                        </p>
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">v{doc.versie}</td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">{formatDate(doc.vervaltDatum)}</td>

@@ -39,6 +39,16 @@ export async function startDocumentAnalysis(
     throw new AppError(409, 'Er loopt al een analyse voor dit document. Wacht tot deze is afgerond.');
   }
 
+  // Check if document has file data
+  const docFile = await prisma.document.findUnique({
+    where: { id: documentId },
+    select: { fileData: true },
+  });
+
+  if (!docFile?.fileData) {
+    throw new AppError(400, 'Dit document heeft geen bestandsdata. Upload het document opnieuw om het te kunnen analyseren.');
+  }
+
   // Create AnalysisJob record
   const job = await prisma.analysisJob.create({
     data: {
@@ -69,6 +79,11 @@ async function processAnalysisInline(
     await prisma.analysisJob.update({
       where: { id: analysisJobId },
       data: { status: 'PROCESSING', progress: 10, attempts: 1 },
+    });
+
+    // Remove any previous failed analysis for this version (unique constraint)
+    await prisma.documentAnalysis.deleteMany({
+      where: { documentId: document.id, documentVersion: document.versie, status: 'FAILED' },
     });
 
     // Create DocumentAnalysis record
@@ -287,10 +302,9 @@ export async function retryAnalysis(
   tenantId: string,
   documentId: string,
 ): Promise<{ jobId: string }> {
-  // Clean up failed jobs
-  await prisma.analysisJob.updateMany({
+  // Clean up failed jobs so startDocumentAnalysis doesn't see them as blocking
+  await prisma.analysisJob.deleteMany({
     where: { documentId, tenantId, status: 'FAILED' },
-    data: { status: 'FAILED' }, // Keep as is, we'll create a new one
   });
 
   const result = await startDocumentAnalysis(tenantId, documentId);
