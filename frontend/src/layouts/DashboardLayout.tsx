@@ -18,6 +18,11 @@ import {
   HeartPulse,
   ArrowLeftRight,
   Clock,
+  Coins,
+  Library,
+  FolderOpen,
+  Calendar,
+  Bell,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -68,6 +73,18 @@ const schoolNav: NavEntry[] = [
       { label: 'Verzuim', path: '/hr/verzuim', icon: HeartPulse },
       { label: 'Vervanging', path: '/hr/vervanging', icon: ArrowLeftRight },
       { label: 'Leeftijd & Uitstroom', path: '/hr/leeftijd', icon: Clock },
+    ],
+  },
+  {
+    label: 'Subsidie Genie',
+    icon: Coins,
+    basePath: '/subsidies',
+    children: [
+      { label: 'Dashboard', path: '/subsidies', icon: LayoutDashboard },
+      { label: 'Bibliotheek', path: '/subsidies/bibliotheek', icon: Library },
+      { label: 'Mijn Subsidies', path: '/subsidies/dossiers', icon: FolderOpen },
+      { label: 'Kalender', path: '/subsidies/kalender', icon: Calendar },
+      { label: 'Signalen', path: '/subsidies/signalen', icon: Bell },
     ],
   },
 ];

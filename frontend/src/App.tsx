@@ -13,6 +13,11 @@ import { HrFormatiePage } from './pages/hr/HrFormatiePage';
 import { HrVerzuimPage } from './pages/hr/HrVerzuimPage';
 import { HrVervangingPage } from './pages/hr/HrVervangingPage';
 import { HrLeeftijdPage } from './pages/hr/HrLeeftijdPage';
+import { SubsidieDashboardPage } from './pages/subsidie/SubsidieDashboardPage';
+import { SubsidieLibraryPage } from './pages/subsidie/SubsidieLibraryPage';
+import { SubsidieDossiersPage } from './pages/subsidie/SubsidieDossiersPage';
+import { SubsidieKalenderPage } from './pages/subsidie/SubsidieKalenderPage';
+import { SubsidieSignalenPage } from './pages/subsidie/SubsidieSignalenPage';
 
 export default function App() {
   return (
@@ -36,6 +41,11 @@ export default function App() {
         <Route path="/hr/verzuim" element={<HrVerzuimPage />} />
         <Route path="/hr/vervanging" element={<HrVervangingPage />} />
         <Route path="/hr/leeftijd" element={<HrLeeftijdPage />} />
+        <Route path="/subsidies" element={<SubsidieDashboardPage />} />
+        <Route path="/subsidies/bibliotheek" element={<SubsidieLibraryPage />} />
+        <Route path="/subsidies/dossiers" element={<SubsidieDossiersPage />} />
+        <Route path="/subsidies/kalender" element={<SubsidieKalenderPage />} />
+        <Route path="/subsidies/signalen" element={<SubsidieSignalenPage />} />
       </Route>
     </Routes>
   );

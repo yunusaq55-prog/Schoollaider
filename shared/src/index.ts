@@ -7,3 +7,4 @@ export * from './types/pdca.js';
 export * from './types/readiness.js';
 export * from './types/analysis.js';
 export * from './types/hr.js';
+export * from './types/subsidie.js';

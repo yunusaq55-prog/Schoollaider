@@ -15,6 +15,7 @@ import dashboardRoutes from './routes/dashboard.routes.js';
 import exportRoutes from './routes/export.routes.js';
 import analysisRoutes from './routes/analysis.routes.js';
 import hrRoutes from './routes/hr.routes.js';
+import subsidieRoutes from './routes/subsidie.routes.js';
 import { startAnalysisWorker } from './services/ai/queue.js';
 
 const app = express();
@@ -43,6 +44,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/hr', hrRoutes);
+app.use('/api/subsidies', subsidieRoutes);
 
 // Error handling
 app.use(errorHandler);

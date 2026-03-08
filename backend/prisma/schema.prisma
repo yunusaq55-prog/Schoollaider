@@ -493,3 +493,198 @@ model HrSignaal {
   @@index([schoolId, status])
   @@map("hr_signalen")
 }
+
+// ─── Subsidie Module models ───────────────────────────────
+
+enum SubsidieStatus {
+  GESIGNALEERD
+  ORIENTATIE
+  AANVRAAG_IN_VOORBEREIDING
+  INGEDIEND
+  TOEGEKEND
+  LOPEND
+  VERANTWOORDING_VEREIST
+  VERANTWOORD
+  AFGEROND
+  AFGEWEZEN
+  INGETROKKEN
+}
+
+enum BestedingsCategorie {
+  PERSONEEL
+  MATERIAAL
+  EXTERN_DIENSTEN
+  ICT
+  HUISVESTING
+  OVERHEAD
+  OVERIG
+}
+
+enum SubsidieDocumentType {
+  AANVRAAGFORMULIER
+  BESCHIKKING
+  VOORTGANGSRAPPORTAGE
+  EINDVERANTWOORDING
+  BIJLAGE
+  OVERIG
+}
+
+enum SubsidieSignaalType {
+  NIEUWE_SUBSIDIE
+  DEADLINE_AANVRAAG
+  DEADLINE_VERANTWOORDING
+  ONDERBESTEDING
+  BESCHIKKING_ONTVANGEN
+  SUBSIDIE_VERLOPEN
+  VERANTWOORDING_ONVOLLEDIG
+}
+
+enum SubsidieUrgentie {
+  INFO
+  WAARSCHUWING
+  KRITIEK
+}
+
+model SubsidieRegeling {
+  id                       String    @id @default(cuid())
+  naam                     String
+  slug                     String    @unique
+  financier                String
+  financierUrl             String?   @map("financier_url")
+  beschrijving             String    @db.Text
+  doelgroep                String
+  minBedrag                Float?    @map("min_bedrag")
+  maxBedrag                Float?    @map("max_bedrag")
+  bedragPerEenheid         String?   @map("bedrag_per_eenheid")
+  aanvraagPeriodeOpen      DateTime? @map("aanvraag_periode_open")
+  aanvraagPeriodeSluiting  DateTime? @map("aanvraag_periode_sluiting")
+  projectPeriodeStart      DateTime? @map("project_periode_start")
+  projectPeriodeEinde      DateTime? @map("project_periode_einde")
+  verantwoordingDeadline   String?   @map("verantwoording_deadline")
+  verantwoordingEisen      String?   @map("verantwoording_eisen") @db.Text
+  vereisten                String?   @db.Text
+  tags                     String[]
+  actief                   Boolean   @default(true)
+  createdAt                DateTime  @default(now()) @map("created_at")
+  updatedAt                DateTime  @updatedAt @map("updated_at")
+
+  dossiers SubsidieDossier[]
+  matches  SubsidieMatch[]
+
+  @@map("subsidie_regelingen")
+}
+
+model SubsidieMatch {
+  id               String   @id @default(cuid())
+  tenantId         String   @map("tenant_id")
+  subsidieId       String   @map("subsidie_id")
+  matchScore       Float    @map("match_score")
+  matchToelichting String?  @map("match_toelichting") @db.Text
+  gezien           Boolean  @default(false)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  regeling SubsidieRegeling @relation(fields: [subsidieId], references: [id])
+
+  @@unique([tenantId, subsidieId])
+  @@index([tenantId])
+  @@map("subsidie_matches")
+}
+
+model SubsidieDossier {
+  id                     String         @id @default(cuid())
+  tenantId               String         @map("tenant_id")
+  subsidieId             String         @map("subsidie_id")
+  naam                   String
+  status                 SubsidieStatus @default(GESIGNALEERD)
+  bedragAangevraagd      Float?         @map("bedrag_aangevraagd")
+  bedragToegekend        Float?         @map("bedrag_toegekend")
+  bedragBesteed          Float          @default(0) @map("bedrag_besteed")
+  aanvraagDatum          DateTime?      @map("aanvraag_datum")
+  beschikkingDatum       DateTime?      @map("beschikking_datum")
+  projectStart           DateTime?      @map("project_start")
+  projectEinde           DateTime?      @map("project_einde")
+  verantwoordingDeadline DateTime?      @map("verantwoording_deadline")
+  beschikkingsnummer     String?
+  referentie             String?
+  schoolIds              String[]       @map("school_ids")
+  notities               String?        @db.Text
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
+  createdBy              String         @map("created_by")
+
+  regeling       SubsidieRegeling         @relation(fields: [subsidieId], references: [id])
+  documenten     SubsidieDocument[]
+  bestedingen    SubsidieBesteding[]
+  signalen       SubsidieSignaal[]
+  verantwoording SubsidieVerantwoording?
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("subsidie_dossiers")
+}
+
+model SubsidieBesteding {
+  id           String              @id @default(cuid())
+  dossierId    String              @map("dossier_id")
+  schoolId     String?             @map("school_id")
+  datum        DateTime
+  bedrag       Float
+  categorie    BestedingsCategorie
+  omschrijving String
+  bonRef       String?             @map("bon_ref")
+  createdAt    DateTime            @default(now()) @map("created_at")
+  createdBy    String              @map("created_by")
+
+  dossier SubsidieDossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+
+  @@index([dossierId])
+  @@map("subsidie_bestedingen")
+}
+
+model SubsidieDocument {
+  id         String               @id @default(cuid())
+  dossierId  String               @map("dossier_id")
+  type       SubsidieDocumentType
+  naam       String
+  s3Key      String               @map("s3_key")
+  versie     Int                  @default(1)
+  uploadedBy String               @map("uploaded_by")
+  uploadedAt DateTime             @default(now()) @map("uploaded_at")
+
+  dossier SubsidieDossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+
+  @@map("subsidie_documenten")
+}
+
+model SubsidieVerantwoording {
+  id             String    @id @default(cuid())
+  dossierId      String    @unique @map("dossier_id")
+  checklistItems Json      @map("checklist_items")
+  voortgangPct   Float     @default(0) @map("voortgang_pct")
+  aiConceptTekst String?   @map("ai_concept_tekst") @db.Text
+  ingediendOp    DateTime? @map("ingediend_op")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  dossier SubsidieDossier @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+
+  @@map("subsidie_verantwoordingen")
+}
+
+model SubsidieSignaal {
+  id           String              @id @default(cuid())
+  tenantId     String              @map("tenant_id")
+  dossierId    String?             @map("dossier_id")
+  regelingId   String?             @map("regeling_id")
+  type         SubsidieSignaalType
+  titel        String
+  beschrijving String
+  urgentie     SubsidieUrgentie    @default(INFO)
+  gelezen      Boolean             @default(false)
+  createdAt    DateTime            @default(now()) @map("created_at")
+
+  dossier SubsidieDossier? @relation(fields: [dossierId], references: [id])
+
+  @@index([tenantId, gelezen])
+  @@map("subsidie_signalen")
+}
