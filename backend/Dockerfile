@@ -13,7 +13,7 @@ COPY backend/ backend/
 RUN pnpm install --frozen-lockfile
 
 # Force no-cache on build step
-ARG CACHEBUST=1
+ARG CACHEBUST=2
 RUN pnpm --filter shared build && pnpm --filter backend run prisma:generate && pnpm --filter backend build
 
 WORKDIR /app/backend
