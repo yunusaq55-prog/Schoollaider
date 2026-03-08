@@ -16,18 +16,18 @@ interface Regeling {
   id: string;
   naam: string;
   financier: string;
-  bedragMin: number;
-  bedragMax: number;
-  deadline: string | null;
+  minBedrag: number | null;
+  maxBedrag: number | null;
+  aanvraagPeriodeSluiting: string | null;
   tags: string[];
   beschrijving: string;
-  vereisten: string[];
+  vereisten: string | null;
   createdAt: string;
 }
 
 interface Match {
-  regelingId: string;
-  score: number;
+  subsidieId: string;
+  matchScore: number;
 }
 
 const financierOptions = ['Alle', 'DUS-I', 'Gemeente', 'EU', 'Privaat'];
@@ -69,7 +69,7 @@ export function SubsidieLibraryPage() {
 
   const matchMap = useMemo(() => {
     const map = new Map<string, number>();
-    matches.forEach((m) => map.set(m.regelingId, m.score));
+    matches.forEach((m) => map.set(m.subsidieId, Math.round(m.matchScore * 100)));
     return map;
   }, [matches]);
 
@@ -88,10 +88,10 @@ export function SubsidieLibraryPage() {
     });
   }, [regelingen, search, financierFilter]);
 
-  async function handleStartDossier(regelingId: string) {
+  async function handleStartDossier(subsidieId: string) {
     setCreating(true);
     try {
-      await api.post('/subsidies/dossiers', { regelingId });
+      await api.post('/subsidies/dossiers', { subsidieId });
       setSelectedRegeling(null);
     } catch (err: any) {
       console.error('[SubsidieLibrary] Dossier aanmaken mislukt:', err?.message);
@@ -181,14 +181,16 @@ export function SubsidieLibraryPage() {
                   <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 font-medium text-gray-600">
                     {r.financier}
                   </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Euro className="h-3 w-3" />
-                    {r.bedragMin.toLocaleString('nl-NL')} - {r.bedragMax.toLocaleString('nl-NL')}
-                  </span>
-                  {r.deadline && (
+                  {(r.minBedrag != null || r.maxBedrag != null) && (
+                    <span className="inline-flex items-center gap-1">
+                      <Euro className="h-3 w-3" />
+                      {r.minBedrag != null ? r.minBedrag.toLocaleString('nl-NL') : '?'} - {r.maxBedrag != null ? r.maxBedrag.toLocaleString('nl-NL') : '?'}
+                    </span>
+                  )}
+                  {r.aanvraagPeriodeSluiting && (
                     <span className="inline-flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
-                      {new Date(r.deadline).toLocaleDateString('nl-NL')}
+                      {new Date(r.aanvraagPeriodeSluiting).toLocaleDateString('nl-NL')}
                     </span>
                   )}
                 </div>
@@ -225,14 +227,16 @@ export function SubsidieLibraryPage() {
 
             <div className="mb-4 flex flex-wrap gap-2 text-xs text-gray-500">
               <span className="rounded bg-gray-100 px-2 py-1 font-medium text-gray-600">{selectedRegeling.financier}</span>
-              <span className="inline-flex items-center gap-1">
-                <Euro className="h-3 w-3" />
-                {selectedRegeling.bedragMin.toLocaleString('nl-NL')} - {selectedRegeling.bedragMax.toLocaleString('nl-NL')}
-              </span>
-              {selectedRegeling.deadline && (
+              {(selectedRegeling.minBedrag != null || selectedRegeling.maxBedrag != null) && (
+                <span className="inline-flex items-center gap-1">
+                  <Euro className="h-3 w-3" />
+                  {selectedRegeling.minBedrag != null ? selectedRegeling.minBedrag.toLocaleString('nl-NL') : '?'} - {selectedRegeling.maxBedrag != null ? selectedRegeling.maxBedrag.toLocaleString('nl-NL') : '?'}
+                </span>
+              )}
+              {selectedRegeling.aanvraagPeriodeSluiting && (
                 <span className="inline-flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  {new Date(selectedRegeling.deadline).toLocaleDateString('nl-NL')}
+                  {new Date(selectedRegeling.aanvraagPeriodeSluiting).toLocaleDateString('nl-NL')}
                 </span>
               )}
             </div>
@@ -242,14 +246,10 @@ export function SubsidieLibraryPage() {
               <p className="text-sm text-gray-600">{selectedRegeling.beschrijving || 'Geen beschrijving beschikbaar.'}</p>
             </div>
 
-            {selectedRegeling.vereisten?.length > 0 && (
+            {selectedRegeling.vereisten && (
               <div className="mb-6">
                 <h3 className="mb-1 text-sm font-semibold text-gray-700">Vereisten</h3>
-                <ul className="list-inside list-disc space-y-1 text-sm text-gray-600">
-                  {selectedRegeling.vereisten.map((v, i) => (
-                    <li key={i}>{v}</li>
-                  ))}
-                </ul>
+                <p className="whitespace-pre-line text-sm text-gray-600">{selectedRegeling.vereisten}</p>
               </div>
             )}
 
