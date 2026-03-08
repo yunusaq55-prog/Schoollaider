@@ -10,8 +10,8 @@ interface DossierFilters {
 interface CreateDossierData {
   tenantId: string;
   subsidieId: string;
-  naam: string;
-  schoolIds: string[];
+  naam?: string;
+  schoolIds?: string[];
   bedragAangevraagd?: number;
   createdBy: string;
 }
@@ -83,8 +83,8 @@ export async function createDossier(data: CreateDossierData) {
     data: {
       tenantId: data.tenantId,
       subsidieId: data.subsidieId,
-      naam: data.naam,
-      schoolIds: data.schoolIds,
+      naam: data.naam || regeling.naam,
+      schoolIds: data.schoolIds ?? [],
       bedragAangevraagd: data.bedragAangevraagd,
       createdBy: data.createdBy,
     },
