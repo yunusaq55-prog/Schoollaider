@@ -1,13 +1,14 @@
 import prisma from '../../utils/prisma.js';
 import { env } from '../../config/env.js';
 import { NotFoundError, AppError } from '../../utils/errors.js';
-import { enqueueAnalysis, type AnalysisJobData } from './queue.js';
+import { extractPdfFromS3 } from './pdf-extractor.js';
+import { analyzeDocument } from './llm-client.js';
 
 // ─── Start analysis ────────────────────────────────────────
 
 /**
  * Trigger AI analysis for a document.
- * Creates an AnalysisJob and enqueues it for background processing.
+ * Runs the analysis inline (no Redis/BullMQ required).
  */
 export async function startDocumentAnalysis(
   tenantId: string,
@@ -49,20 +50,138 @@ export async function startDocumentAnalysis(
     },
   });
 
-  // Enqueue for background processing
-  const jobData: AnalysisJobData = {
-    analysisJobId: job.id,
-    documentId: document.id,
-    documentVersion: document.versie,
-    s3Key: document.s3Key,
-    documentType: document.type,
-    documentTitle: document.titel,
-    tenantId,
-  };
-
-  await enqueueAnalysis(jobData);
+  // Run analysis inline (fire-and-forget)
+  processAnalysisInline(job.id, document).catch((err) => {
+    console.error(`[AI] Inline analyse mislukt voor ${document.titel}:`, (err as Error).message);
+  });
 
   return { jobId: job.id, analysisId: job.id };
+}
+
+// ─── Inline processing (no Redis needed) ──────────────────
+
+async function processAnalysisInline(
+  analysisJobId: string,
+  document: { id: string; versie: number; s3Key: string; type: string; titel: string },
+): Promise<void> {
+  try {
+    // Update status → PROCESSING
+    await prisma.analysisJob.update({
+      where: { id: analysisJobId },
+      data: { status: 'PROCESSING', progress: 10, attempts: 1 },
+    });
+
+    // Create DocumentAnalysis record
+    const analysis = await prisma.documentAnalysis.create({
+      data: {
+        documentId: document.id,
+        documentVersion: document.versie,
+        status: 'PROCESSING',
+        startedAt: new Date(),
+      },
+    });
+
+    // Step 1: Extract PDF text
+    await prisma.analysisJob.update({ where: { id: analysisJobId }, data: { progress: 20 } });
+    const extraction = await extractPdfFromS3(document.s3Key);
+
+    await prisma.documentAnalysis.update({
+      where: { id: analysis.id },
+      data: { extractedText: extraction.fullText },
+    });
+
+    // Step 2: LLM analysis
+    await prisma.analysisJob.update({ where: { id: analysisJobId }, data: { progress: 40 } });
+    const { result, tokensUsed } = await analyzeDocument(
+      extraction.fullText,
+      document.type,
+      document.titel,
+    );
+
+    await prisma.analysisJob.update({ where: { id: analysisJobId }, data: { progress: 80 } });
+
+    // Step 3: Store sections + standaard links
+    await prisma.documentSection.deleteMany({ where: { analysisId: analysis.id } });
+
+    for (let i = 0; i < result.sections.length; i++) {
+      const section = result.sections[i];
+      const createdSection = await prisma.documentSection.create({
+        data: {
+          analysisId: analysis.id,
+          titel: section.titel,
+          inhoud: section.inhoud,
+          startPagina: section.startPagina ?? null,
+          eindPagina: section.eindPagina ?? null,
+          volgorde: i,
+        },
+      });
+
+      for (const mapping of section.standaarden) {
+        const standaard = await prisma.inspectieStandaard.findUnique({
+          where: { code: mapping.code },
+        });
+        if (standaard) {
+          await prisma.sectionStandaardLink.create({
+            data: {
+              sectionId: createdSection.id,
+              standaardId: standaard.id,
+              relevance: mapping.relevance,
+              evidence: mapping.evidence,
+            },
+          });
+          const existingDocLink = await prisma.documentStandaardLink.findFirst({
+            where: { documentId: document.id, standaardId: standaard.id },
+          });
+          if (!existingDocLink) {
+            await prisma.documentStandaardLink.create({
+              data: { documentId: document.id, standaardId: standaard.id },
+            });
+          }
+        }
+      }
+    }
+
+    // Mark complete
+    await prisma.documentAnalysis.update({
+      where: { id: analysis.id },
+      data: {
+        status: 'COMPLETED',
+        completedAt: new Date(),
+        sections: JSON.parse(JSON.stringify(result.sections)),
+        mappings: JSON.parse(JSON.stringify(result.sections.flatMap((s) => s.standaarden))),
+        gaps: JSON.parse(JSON.stringify(result.gaps)),
+        overlaps: JSON.parse(JSON.stringify(result.overlaps)),
+        summary: result.summary,
+        tokenCount: tokensUsed,
+        costCents: Math.ceil(tokensUsed * 0.003),
+      },
+    });
+
+    await prisma.analysisJob.update({
+      where: { id: analysisJobId },
+      data: { status: 'COMPLETED', progress: 100, resultId: analysis.id },
+    });
+
+    console.log(`[AI] Analyse voltooid: ${document.titel}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Onbekende fout';
+    console.error(`[AI] Analyse mislukt: ${document.titel}:`, errorMessage);
+
+    await prisma.analysisJob.update({
+      where: { id: analysisJobId },
+      data: { status: 'FAILED', errorMessage },
+    });
+
+    const existingAnalysis = await prisma.documentAnalysis.findFirst({
+      where: { documentId: document.id, documentVersion: document.versie },
+    });
+    if (existingAnalysis) {
+      await prisma.documentAnalysis.update({
+        where: { id: existingAnalysis.id },
+        data: { status: 'FAILED', errorMessage },
+      });
+    }
+  }
 }
 
 // ─── Auto-trigger (called after document upload) ───────────

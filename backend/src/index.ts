@@ -16,7 +16,7 @@ import exportRoutes from './routes/export.routes.js';
 import analysisRoutes from './routes/analysis.routes.js';
 import hrRoutes from './routes/hr.routes.js';
 import subsidieRoutes from './routes/subsidie.routes.js';
-import { startAnalysisWorker } from './services/ai/queue.js';
+
 
 const app = express();
 
@@ -58,14 +58,8 @@ async function start() {
     console.warn('S3 bucket init overgeslagen (MinIO niet beschikbaar):', (err as Error).message);
   }
 
-  // Start AI analysis worker if enabled
   if (env.AI_ENABLED) {
-    try {
-      startAnalysisWorker();
-      console.log('AI analyse worker gestart');
-    } catch (err) {
-      console.warn('AI worker niet gestart:', (err as Error).message);
-    }
+    console.log('AI analyse ingeschakeld (inline modus, geen Redis vereist)');
   }
 
   app.listen(env.PORT, () => {
