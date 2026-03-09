@@ -75,7 +75,7 @@ export function ComplianceMatrixView() {
   if (!matrix) return null;
 
   return (
-    <div className="card overflow-hidden">
+    <div className="card">
       <div className="border-b border-gray-100 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -152,45 +152,49 @@ function StandaardCell({ standaard }: { standaard: ComplianceStandaard }) {
 
       {/* Tooltip */}
       {hovered && (
-        <div className="absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
-          <div className="mb-2 text-xs font-semibold text-gray-900">{standaard.naam}</div>
-          <div className="space-y-1.5 text-[11px]">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Handmatig:</span>
-              <span className={`rounded px-1.5 py-0.5 font-medium ${STATUS_BG[standaard.handmatigeStatus]}`}>
-                {standaard.handmatigeStatus}
-              </span>
-            </div>
-            {standaard.aiStatus && (
+        <div className="absolute left-1/2 top-full z-50 mt-2 w-56 -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+          {/* Arrow */}
+          <div className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-gray-200 bg-white" />
+          <div className="relative">
+            <div className="mb-2 text-xs font-semibold text-gray-900">{standaard.naam}</div>
+            <div className="space-y-1.5 text-[11px]">
               <div className="flex justify-between">
-                <span className="text-gray-500">AI Status:</span>
-                <span className={`rounded px-1.5 py-0.5 font-medium ${STATUS_BG[standaard.aiStatus]}`}>
-                  {standaard.aiStatus}
+                <span className="text-gray-500">Handmatig:</span>
+                <span className={`rounded px-1.5 py-0.5 font-medium ${STATUS_BG[standaard.handmatigeStatus]}`}>
+                  {standaard.handmatigeStatus}
                 </span>
               </div>
-            )}
-            {standaard.aiConfidence != null && (
+              {standaard.aiStatus && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">AI Status:</span>
+                  <span className={`rounded px-1.5 py-0.5 font-medium ${STATUS_BG[standaard.aiStatus]}`}>
+                    {standaard.aiStatus}
+                  </span>
+                </div>
+              )}
+              {standaard.aiConfidence != null && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Vertrouwen:</span>
+                  <span className="font-mono text-gray-700">{Math.round(standaard.aiConfidence * 100)}%</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span className="text-gray-500">Vertrouwen:</span>
-                <span className="font-mono text-gray-700">{Math.round(standaard.aiConfidence * 100)}%</span>
+                <span className="text-gray-500">Documenten:</span>
+                <span className="flex items-center gap-1 text-gray-700">
+                  <FileCheck className="h-3 w-3" />
+                  {standaard.aantalDocumenten}
+                  {standaard.aantalAiSecties > 0 && (
+                    <span className="text-violet-500">+{standaard.aantalAiSecties} AI</span>
+                  )}
+                </span>
               </div>
-            )}
-            <div className="flex justify-between">
-              <span className="text-gray-500">Documenten:</span>
-              <span className="flex items-center gap-1 text-gray-700">
-                <FileCheck className="h-3 w-3" />
-                {standaard.aantalDocumenten}
-                {standaard.aantalAiSecties > 0 && (
-                  <span className="text-violet-500">+{standaard.aantalAiSecties} AI</span>
-                )}
-              </span>
+              {!standaard.actueel && standaard.effectieveStatus !== 'ONTBREEKT' && (
+                <div className="flex items-center gap-1 text-amber-600">
+                  <AlertTriangle className="h-3 w-3" />
+                  Niet actueel
+                </div>
+              )}
             </div>
-            {!standaard.actueel && standaard.effectieveStatus !== 'ONTBREEKT' && (
-              <div className="flex items-center gap-1 text-amber-600">
-                <AlertTriangle className="h-3 w-3" />
-                Niet actueel
-              </div>
-            )}
           </div>
         </div>
       )}
