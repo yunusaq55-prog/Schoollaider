@@ -17,12 +17,30 @@ import analysisRoutes from './routes/analysis.routes.js';
 import hrRoutes from './routes/hr.routes.js';
 import subsidieRoutes from './routes/subsidie.routes.js';
 import operationsRoutes from './routes/operations.routes.js';
+import IORedis from 'ioredis';
 import {
   startSignalScannerWorker,
   scheduleSignalScanner,
   startInProcessScanner,
 } from './jobs/signal-scanner.job.js';
 import prisma from './utils/prisma.js';
+
+async function checkRedis(): Promise<boolean> {
+  const client = new IORedis(env.REDIS_URL, {
+    maxRetriesPerRequest: 0,
+    lazyConnect: true,
+    enableOfflineQueue: false,
+  });
+  try {
+    await client.connect();
+    await client.ping();
+    await client.quit();
+    return true;
+  } catch {
+    client.disconnect();
+    return false;
+  }
+}
 
 const app = express();
 
@@ -67,14 +85,12 @@ async function start() {
   });
 
   // Signal scanner — BullMQ als Redis beschikbaar is, anders in-process fallback
-  try {
-    const { getRedisConnection } = await import('./config/redis.js');
-    const redis = getRedisConnection();
-    await redis.ping(); // gooit error als Redis niet bereikbaar is
+  const redisAvailable = await checkRedis();
+  if (redisAvailable) {
     startSignalScannerWorker();
     const tenants = await prisma.tenant.findMany({ select: { id: true } });
     await scheduleSignalScanner(tenants.map((t) => t.id));
-  } catch {
+  } else {
     startInProcessScanner();
   }
 }
