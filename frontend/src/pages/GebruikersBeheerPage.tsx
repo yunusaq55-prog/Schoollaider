@@ -29,6 +29,7 @@ const ROLE_LABELS: Record<Role, string> = {
   [Role.BESTUUR_GEBRUIKER]: 'Bestuur Gebruiker',
   [Role.SCHOOL_DIRECTEUR]: 'School Directeur',
   [Role.SCHOOL_GEBRUIKER]: 'School Gebruiker',
+  [Role.OPERATIONEEL_MANAGER]: 'Operationeel Manager',
 };
 
 export function GebruikersBeheerPage() {
