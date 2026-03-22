@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import prisma from '../../utils/prisma.js';
 
 interface SignaalData {
@@ -32,7 +33,7 @@ export async function createSignaalIfNotExists(
       titel: data.titel,
       beschrijving: data.beschrijving,
       severity: data.severity,
-      payload: data.payload,
+      payload: data.payload as unknown as Prisma.InputJsonValue,
       opgelost: false,
     },
     update: {
@@ -40,7 +41,7 @@ export async function createSignaalIfNotExists(
       titel: data.titel,
       beschrijving: data.beschrijving,
       severity: data.severity,
-      payload: data.payload,
+      payload: data.payload as unknown as Prisma.InputJsonValue,
     },
   });
 }
@@ -57,7 +58,7 @@ export async function upsertMetricSnapshot(
     data: {
       tenantId,
       schoolId,
-      metrics,
+      metrics: metrics as unknown as Prisma.InputJsonValue,
     },
   });
 }

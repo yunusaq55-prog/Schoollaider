@@ -1,5 +1,5 @@
 import { Queue, Worker, type Job } from 'bullmq';
-import { getRedisConnection } from '../config/redis.js';
+import { env } from '../config/env.js';
 import prisma from '../utils/prisma.js';
 import { createSignaalIfNotExists, upsertMetricSnapshot } from '../services/ops/ops.service.js';
 
@@ -7,11 +7,14 @@ const QUEUE_NAME = 'ops-signal-scanner';
 const DREMPEL_PERSONEEL_VERZUIM = 7.0; // %
 const DREMPEL_NPO_BESTEDING = 50.0; // % (te laag = risico)
 
+// BullMQ accepts a URL string directly — avoids ioredis version conflicts
+const redisOpts = { connection: { url: env.REDIS_URL } as { url: string } };
+
 // ─── Queue ────────────────────────────────────────────────────
 
 export function createSignalScannerQueue() {
   return new Queue(QUEUE_NAME, {
-    connection: getRedisConnection(),
+    ...redisOpts,
     defaultJobOptions: {
       attempts: 3,
       backoff: { type: 'exponential', delay: 5000 },
@@ -48,7 +51,7 @@ export function startSignalScannerWorker() {
 
       console.log(`[SignalScanner] Klaar voor ${schools.length} scholen`);
     },
-    { connection: getRedisConnection(), concurrency: 2 },
+    { ...redisOpts, concurrency: 2 },
   );
 
   worker.on('failed', (_job, err) => {

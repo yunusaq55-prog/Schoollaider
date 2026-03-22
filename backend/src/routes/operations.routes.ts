@@ -63,7 +63,7 @@ router.post('/acties', requirePermission('operations:manage'), async (req, res, 
     const actie = await actieService.createActie({
       ...req.body,
       tenantId: req.user!.tenantId,
-      createdBy: req.user!.id,
+      createdBy: req.user!.userId,
     });
     res.status(201).json(actie);
   } catch (err) {
@@ -78,7 +78,7 @@ router.post('/acties/from-signaal', requirePermission('operations:manage'), asyn
       req.user!.tenantId,
       signaalId,
       signaalType,
-      req.user!.id,
+      req.user!.userId,
     );
     res.status(201).json(actie);
   } catch (err) {
@@ -112,7 +112,7 @@ router.post('/vergaderingen', requirePermission('operations:manage'), async (req
       ...req.body,
       datum: new Date(req.body.datum),
       tenantId: req.user!.tenantId,
-      createdBy: req.user!.id,
+      createdBy: req.user!.userId,
     });
     res.status(201).json(vergadering);
   } catch (err) {
@@ -165,7 +165,7 @@ router.post('/communicatie/genereer', requirePermission('operations:ai_draft'), 
     const draft = await communicatieService.generateDraft({
       ...req.body,
       tenantId: req.user!.tenantId,
-      createdBy: req.user!.id,
+      createdBy: req.user!.userId,
     });
     res.status(201).json(draft);
   } catch (err) {
@@ -222,7 +222,7 @@ router.post('/beleid', requirePermission('operations:manage'), async (req, res, 
         ? new Date(req.body.volgendEvaluatieDatum)
         : undefined,
       tenantId: req.user!.tenantId,
-      createdBy: req.user!.id,
+      createdBy: req.user!.userId,
     });
     res.status(201).json(doc);
   } catch (err) {
