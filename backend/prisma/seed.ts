@@ -407,9 +407,23 @@ async function main() {
 
   console.log(`  ${subsidieRegelingen.length} subsidie regelingen aangemaakt`);
 
+  // Create operationeel manager user
+  await prisma.user.upsert({
+    where: { email: 'ops@demo.nl' },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      email: 'ops@demo.nl',
+      passwordHash,
+      naam: 'Demo Operationeel Manager',
+      role: 'OPERATIONEEL_MANAGER',
+    },
+  });
+
   console.log('Seed klaar!');
   console.log('  Login: admin@demo.nl / admin123 (BESTUUR_ADMIN)');
   console.log('  Login: directeur@demo.nl / admin123 (SCHOOL_DIRECTEUR)');
+  console.log('  Login: ops@demo.nl / admin123 (OPERATIONEEL_MANAGER)');
 }
 
 main()

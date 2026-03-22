@@ -16,7 +16,13 @@ import exportRoutes from './routes/export.routes.js';
 import analysisRoutes from './routes/analysis.routes.js';
 import hrRoutes from './routes/hr.routes.js';
 import subsidieRoutes from './routes/subsidie.routes.js';
-
+import operationsRoutes from './routes/operations.routes.js';
+import {
+  startSignalScannerWorker,
+  scheduleSignalScanner,
+  startInProcessScanner,
+} from './jobs/signal-scanner.job.js';
+import prisma from './utils/prisma.js';
 
 const app = express();
 
@@ -45,6 +51,7 @@ app.use('/api/export', exportRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/hr', hrRoutes);
 app.use('/api/subsidies', subsidieRoutes);
+app.use('/api/operations', operationsRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -58,6 +65,18 @@ async function start() {
   app.listen(env.PORT, () => {
     console.log(`SchoollAIder API draait op http://localhost:${env.PORT}`);
   });
+
+  // Signal scanner — BullMQ als Redis beschikbaar is, anders in-process fallback
+  try {
+    const { getRedisConnection } = await import('./config/redis.js');
+    const redis = getRedisConnection();
+    await redis.ping(); // gooit error als Redis niet bereikbaar is
+    startSignalScannerWorker();
+    const tenants = await prisma.tenant.findMany({ select: { id: true } });
+    await scheduleSignalScanner(tenants.map((t) => t.id));
+  } catch {
+    startInProcessScanner();
+  }
 }
 
 start();

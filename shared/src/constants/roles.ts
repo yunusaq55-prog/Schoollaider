@@ -2,6 +2,7 @@ export enum Role {
   SUPER_ADMIN = 'SUPER_ADMIN',
   BESTUUR_ADMIN = 'BESTUUR_ADMIN',
   BESTUUR_GEBRUIKER = 'BESTUUR_GEBRUIKER',
+  OPERATIONEEL_MANAGER = 'OPERATIONEEL_MANAGER',
   SCHOOL_DIRECTEUR = 'SCHOOL_DIRECTEUR',
   SCHOOL_GEBRUIKER = 'SCHOOL_GEBRUIKER',
 }
@@ -25,7 +26,11 @@ export type Permission =
   | 'analysis:trigger'
   | 'analysis:view'
   | 'hr:manage'
-  | 'hr:view';
+  | 'hr:view'
+  | 'subsidies:view'
+  | 'operations:view'
+  | 'operations:manage'
+  | 'operations:ai_draft';
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   [Role.SUPER_ADMIN]: [
@@ -47,6 +52,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'analysis:view',
     'hr:manage',
     'hr:view',
+    'subsidies:view',
+    'operations:view',
+    'operations:manage',
+    'operations:ai_draft',
   ],
   [Role.BESTUUR_ADMIN]: [
     'schools:manage',
@@ -66,6 +75,28 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'analysis:view',
     'hr:manage',
     'hr:view',
+    'subsidies:view',
+    'operations:view',
+    'operations:manage',
+    'operations:ai_draft',
+  ],
+  [Role.OPERATIONEEL_MANAGER]: [
+    'schools:view_all',
+    'school:view_own',
+    'dashboard:view_all',
+    'dashboard:view_own',
+    'documents:upload',
+    'documents:manage',
+    'inspectie:view',
+    'pdca:view',
+    'analysis:view',
+    'analysis:trigger',
+    'hr:view',
+    'export:inspectiedossier',
+    'subsidies:view',
+    'operations:view',
+    'operations:manage',
+    'operations:ai_draft',
   ],
   [Role.BESTUUR_GEBRUIKER]: [
     'documents:upload',

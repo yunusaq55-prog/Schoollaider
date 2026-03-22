@@ -23,7 +23,17 @@ import {
   FolderOpen,
   Calendar,
   Bell,
+  Briefcase,
+  Sun,
+  Grid3x3,
+  CheckSquare,
+  CalendarDays,
+  Mail,
+  TrendingUp,
+  Search,
+  BookOpen,
 } from 'lucide-react';
+import { Role } from '@schoollaider/shared';
 import type { LucideIcon } from 'lucide-react';
 
 interface NavItem {
@@ -89,12 +99,37 @@ const schoolNav: NavEntry[] = [
   },
 ];
 
+const operationsNav: NavGroup = {
+  label: 'Operationeel Manager',
+  icon: Briefcase,
+  basePath: '/operations',
+  children: [
+    { label: 'Morning Brief', path: '/operations', icon: Sun },
+    { label: 'Schooloverzicht', path: '/operations/scholen', icon: Grid3x3 },
+    { label: 'Acties', path: '/operations/acties', icon: CheckSquare },
+    { label: 'Vergaderingen', path: '/operations/vergaderingen', icon: CalendarDays },
+    { label: 'Communicatie', path: '/operations/communicatie', icon: Mail },
+    { label: 'Voorspellende Analyse', path: '/operations/analytics', icon: TrendingUp },
+    { label: 'Document Zoeken', path: '/operations/zoeken', icon: Search },
+    { label: 'Beleidscyclus', path: '/operations/beleid', icon: BookOpen },
+  ],
+};
+
 export function DashboardLayout() {
   const { user, logout } = useAuth();
   const { isBestuurView, selectedSchool } = useSchoolContext();
   const location = useLocation();
 
-  const navEntries = isBestuurView ? bestuurNav : schoolNav;
+  const showOperationsNav =
+    user?.role === Role.OPERATIONEEL_MANAGER ||
+    user?.role === Role.BESTUUR_ADMIN ||
+    user?.role === Role.SUPER_ADMIN;
+
+  const navEntries = isBestuurView
+    ? bestuurNav
+    : showOperationsNav
+      ? [...schoolNav, operationsNav]
+      : schoolNav;
 
   // Track which nav groups are expanded (default: expand the group containing the active route)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => {

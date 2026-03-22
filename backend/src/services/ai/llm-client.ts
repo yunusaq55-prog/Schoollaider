@@ -1,7 +1,18 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { env } from '../../config/env.js';
-import { fillPrompt, DOCUMENT_ANALYSIS_PROMPT, PDCA_SUGGESTIONS_PROMPT, COMPLIANCE_SUMMARY_PROMPT } from './prompts.js';
+import {
+  fillPrompt,
+  DOCUMENT_ANALYSIS_PROMPT,
+  PDCA_SUGGESTIONS_PROMPT,
+  COMPLIANCE_SUMMARY_PROMPT,
+  MORNING_BRIEF_PROMPT,
+  ACTION_DRAFT_PROMPT,
+  AGENDA_PROMPT,
+  COMMUNICATIE_PROMPT,
+  PREDICTIVE_BRIEF_PROMPT,
+  DOCUMENT_SEARCH_PROMPT,
+} from './prompts.js';
 
 // ─── OpenAI client ─────────────────────────────────────────
 
@@ -82,6 +93,102 @@ export const ComplianceSummarySchema = z.object({
 });
 
 export type ComplianceSummaryResult = z.infer<typeof ComplianceSummarySchema>;
+
+// ─── Operations Manager Schemas ────────────────────────────
+
+const MorningBriefItemSchema = z.object({
+  prioriteit: z.enum(['KRITIEK', 'HOOG', 'MIDDEL', 'LAAG']),
+  titel: z.string(),
+  schoolNaam: z.string(),
+  actie: z.string(),
+  kanSluitenVandaag: z.boolean(),
+  bron: z.string(),
+  signaalId: z.string(),
+  signaalType: z.string(),
+});
+
+export const MorningBriefResultSchema = z.object({
+  datum: z.string(),
+  samenvatting: z.string(),
+  aantalKritiek: z.number(),
+  aantalHoog: z.number(),
+  items: z.array(MorningBriefItemSchema),
+  kanVandaagAfsluiten: z.array(z.string()),
+});
+
+export type MorningBriefResult = z.infer<typeof MorningBriefResultSchema>;
+
+const ConceptEmailSchema = z.object({
+  onderwerp: z.string(),
+  tekst: z.string(),
+});
+
+export const ActionDraftSchema = z.object({
+  titel: z.string(),
+  beschrijving: z.string(),
+  prioriteit: z.enum(['LAAG', 'MIDDEL', 'HOOG', 'KRITIEK']),
+  deadlineDagen: z.number(),
+  aanbevolenRol: z.string(),
+  conceptEmail: ConceptEmailSchema,
+});
+
+export type ActionDraftResult = z.infer<typeof ActionDraftSchema>;
+
+const AgendaItemSchema = z.object({
+  volgorde: z.number(),
+  titel: z.string(),
+  toelichting: z.string(),
+  type: z.enum(['besluitvorming', 'informatie', 'actie', 'rondvraag']),
+  verantwoordelijke: z.string(),
+  duurMinuten: z.number(),
+});
+
+export const AgendaResultSchema = z.object({
+  items: z.array(AgendaItemSchema),
+  totaalDuurMinuten: z.number(),
+  samenvatting: z.string(),
+});
+
+export type AgendaResult = z.infer<typeof AgendaResultSchema>;
+
+export const CommunicatieResultSchema = z.object({
+  onderwerp: z.string(),
+  concept: z.string(),
+});
+
+export type CommunicatieResult = z.infer<typeof CommunicatieResultSchema>;
+
+const PredictiveInzichtSchema = z.object({
+  schoolNaam: z.string(),
+  schoolId: z.string(),
+  type: z.enum(['STIJGEND_VERZUIM', 'UITSTROOM_RISICO', 'KAPACITEITS_TEKORT', 'STABIEL']),
+  beschrijving: z.string(),
+  aanbeveling: z.string(),
+  waarschijnlijkheid: z.number().min(0).max(1),
+  tijdshorizonWeken: z.number(),
+});
+
+export const PredictiveResultSchema = z.object({
+  inzichten: z.array(PredictiveInzichtSchema),
+});
+
+export type PredictiveResult = z.infer<typeof PredictiveResultSchema>;
+
+const DocumentBronSchema = z.object({
+  documentTitel: z.string(),
+  sectionTitel: z.string(),
+  datum: z.string(),
+  relevantie: z.number().min(0).max(1),
+  citaat: z.string(),
+});
+
+export const DocumentSearchResultSchema = z.object({
+  antwoord: z.string(),
+  gevonden: z.boolean(),
+  bronnen: z.array(DocumentBronSchema),
+});
+
+export type DocumentSearchResult = z.infer<typeof DocumentSearchResultSchema>;
 
 // ─── Token counting helper ─────────────────────────────────
 
@@ -203,5 +310,111 @@ export async function generateComplianceSummary(
   const parsed = JSON.parse(content);
   const result = ComplianceSummarySchema.parse(parsed);
 
+  return { result, tokensUsed };
+}
+
+// ─── Operations Manager AI Functions ───────────────────────
+
+/**
+ * Generate the daily morning brief from aggregated signals.
+ */
+export async function generateMorningBrief(
+  signalen: string,
+  datum: string,
+): Promise<{ result: MorningBriefResult; tokensUsed: number }> {
+  const prompt = fillPrompt(MORNING_BRIEF_PROMPT, { signalen, datum });
+  const { content, tokensUsed } = await callLLM(prompt);
+  const parsed = JSON.parse(content);
+  const result = MorningBriefResultSchema.parse(parsed);
+  return { result, tokensUsed };
+}
+
+/**
+ * Draft an action + concept email from a signal.
+ */
+export async function draftActie(
+  signaal: string,
+  schoolNaam: string,
+  datum: string,
+): Promise<{ result: ActionDraftResult; tokensUsed: number }> {
+  const prompt = fillPrompt(ACTION_DRAFT_PROMPT, { signaal, schoolNaam, datum });
+  const { content, tokensUsed } = await callLLM(prompt);
+  const parsed = JSON.parse(content);
+  const result = ActionDraftSchema.parse(parsed);
+  return { result, tokensUsed };
+}
+
+/**
+ * Generate a meeting agenda.
+ */
+export async function generateAgenda(
+  vergaderdatum: string,
+  vergadertitel: string,
+  openActies: string,
+  signalen: string,
+  beleidsEvaluaties: string,
+): Promise<{ result: AgendaResult; tokensUsed: number }> {
+  const prompt = fillPrompt(AGENDA_PROMPT, {
+    vergaderdatum,
+    vergadertitel,
+    openActies,
+    signalen,
+    beleidsEvaluaties,
+  });
+  const { content, tokensUsed } = await callLLM(prompt);
+  const parsed = JSON.parse(content);
+  const result = AgendaResultSchema.parse(parsed);
+  return { result, tokensUsed };
+}
+
+/**
+ * Draft a communication (email or letter).
+ */
+export async function draftCommunicatie(
+  intentie: string,
+  schoolNaam: string,
+  ontvangerNaam: string,
+  ontvangerRol: string,
+  datum: string,
+  stijlVoorbeelden: string,
+): Promise<{ result: CommunicatieResult; tokensUsed: number }> {
+  const prompt = fillPrompt(COMMUNICATIE_PROMPT, {
+    intentie,
+    schoolNaam,
+    ontvangerNaam,
+    ontvangerRol,
+    datum,
+    stijlVoorbeelden,
+  });
+  const { content, tokensUsed } = await callLLM(prompt);
+  const parsed = JSON.parse(content);
+  const result = CommunicatieResultSchema.parse(parsed);
+  return { result, tokensUsed };
+}
+
+/**
+ * Generate predictive HR insights from historical verzuim data.
+ */
+export async function generatePredictiveInsights(
+  verzuimData: string,
+): Promise<{ result: PredictiveResult; tokensUsed: number }> {
+  const prompt = fillPrompt(PREDICTIVE_BRIEF_PROMPT, { verzuimData });
+  const { content, tokensUsed } = await callLLM(prompt);
+  const parsed = JSON.parse(content);
+  const result = PredictiveResultSchema.parse(parsed);
+  return { result, tokensUsed };
+}
+
+/**
+ * Answer a natural language question based on document sections.
+ */
+export async function searchDocuments(
+  vraag: string,
+  secties: string,
+): Promise<{ result: DocumentSearchResult; tokensUsed: number }> {
+  const prompt = fillPrompt(DOCUMENT_SEARCH_PROMPT, { vraag, secties });
+  const { content, tokensUsed } = await callLLM(prompt);
+  const parsed = JSON.parse(content);
+  const result = DocumentSearchResultSchema.parse(parsed);
   return { result, tokensUsed };
 }

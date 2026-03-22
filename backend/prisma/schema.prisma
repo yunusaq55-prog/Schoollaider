@@ -11,6 +11,7 @@ enum Role {
   SUPER_ADMIN
   BESTUUR_ADMIN
   BESTUUR_GEBRUIKER
+  OPERATIONEEL_MANAGER
   SCHOOL_DIRECTEUR
   SCHOOL_GEBRUIKER
 }
@@ -98,9 +99,16 @@ model Tenant {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  schools   School[]
-  users     User[]
-  documents Document[]
+  schools           School[]
+  users             User[]
+  documents         Document[]
+  acties            Actie[]
+  morningBriefs     MorningBrief[]
+  vergaderingen     Vergadering[]
+  communicatieDrafts CommunicatieDraft[]
+  beleidsDocumenten  BeleidsDocument[]
+  opsSignalen        OpsSignaal[]
+  metricSnapshots    MetricSnapshot[]
 
   @@map("tenants")
 }
@@ -128,7 +136,12 @@ model School {
   hrVerzuim         HrVerzuim[]
   hrVervanging      HrVervanging[]
   hrLeeftijd        HrLeeftijd[]
-  hrSignalen        HrSignaal[]
+  hrSignalen         HrSignaal[]
+  acties             Actie[]
+  communicatieDrafts CommunicatieDraft[]
+  beleidsDocumenten  BeleidsDocument[]
+  opsSignalen        OpsSignaal[]
+  metricSnapshots    MetricSnapshot[]
 
   @@map("schools")
 }
@@ -147,8 +160,13 @@ model User {
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   school           School?           @relation(fields: [schoolId], references: [id], onDelete: SetNull)
-  documents        Document[]
-  documentVersions DocumentVersion[]
+  documents          Document[]
+  documentVersions   DocumentVersion[]
+  actiesAssigned     Actie[]            @relation("ActieAssignee")
+  actiesCreated      Actie[]            @relation("ActieCreator")
+  vergaderingen      Vergadering[]
+  communicatieDrafts CommunicatieDraft[]
+  beleidsDocumenten  BeleidsDocument[]
 
   @@map("users")
 }
@@ -177,7 +195,8 @@ model Document {
   user           User                    @relation(fields: [uploadedBy], references: [id])
   versions       DocumentVersion[]
   standaardLinks DocumentStandaardLink[]
-  analyses       DocumentAnalysis[]
+  analyses          DocumentAnalysis[]
+  beleidsDocumenten BeleidsDocument[]
 
   @@index([tenantId, schoolId, type])
   @@map("documents")
@@ -690,4 +709,202 @@ model SubsidieSignaal {
 
   @@index([tenantId, gelezen])
   @@map("subsidie_signalen")
+}
+
+// ─── Operations Manager Module ────────────────────────────
+
+enum ActieStatus {
+  OPEN
+  IN_BEHANDELING
+  AFGEROND
+  GEANNULEERD
+}
+
+enum ActiePrioriteit {
+  LAAG
+  MIDDEL
+  HOOG
+  KRITIEK
+}
+
+enum ActieBron {
+  HR_SIGNAAL
+  SUBSIDIE_SIGNAAL
+  PDCA_SUGGESTION
+  COMPLIANCE
+  HANDMATIG
+}
+
+enum VergaderingStatus {
+  CONCEPT
+  DEFINITIEF
+  AFGEROND
+}
+
+enum BeleidsDocumentStatus {
+  ACTIEF
+  VERLOPEN
+  ARCHIEF
+}
+
+enum CommunicatieKanaal {
+  EMAIL
+  BRIEF
+  NIEUWSBRIEF
+}
+
+model Actie {
+  id              String          @id @default(uuid())
+  tenantId        String          @map("tenant_id")
+  schoolId        String?         @map("school_id")
+  titel           String
+  beschrijving    String          @db.Text
+  prioriteit      ActiePrioriteit @default(MIDDEL)
+  status          ActieStatus     @default(OPEN)
+  bron            ActieBron       @default(HANDMATIG)
+  bronSignaalId   String?         @map("bron_signaal_id")
+  bronSignaalType String?         @map("bron_signaal_type")
+  toegewezenAan   String?         @map("toegewezen_aan")
+  deadline        DateTime?
+  afgerondenOp    DateTime?       @map("afgeronden_op")
+  conceptEmail    String?         @map("concept_email") @db.Text
+  createdBy       String          @map("created_by")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  tenant   Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  assignee User?   @relation("ActieAssignee", fields: [toegewezenAan], references: [id], onDelete: SetNull)
+  creator  User    @relation("ActieCreator", fields: [createdBy], references: [id])
+
+  @@index([tenantId, status])
+  @@index([tenantId, schoolId])
+  @@index([tenantId, deadline])
+  @@map("acties")
+}
+
+model MorningBrief {
+  id         String   @id @default(uuid())
+  tenantId   String   @map("tenant_id")
+  datum      DateTime @db.Date
+  briefJson  Json     @map("brief_json")
+  tokensUsed Int      @default(0) @map("tokens_used")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, datum])
+  @@index([tenantId])
+  @@map("morning_briefs")
+}
+
+model Vergadering {
+  id            String            @id @default(uuid())
+  tenantId      String            @map("tenant_id")
+  titel         String
+  datum         DateTime
+  locatie       String            @default("")
+  status        VergaderingStatus @default(CONCEPT)
+  agendaJson    Json?             @map("agenda_json")
+  samenvatting  String?           @db.Text
+  notulenTekst  String?           @map("notulen_tekst") @db.Text
+  aiGegenereerd Boolean           @default(false) @map("ai_gegenereerd")
+  createdBy     String            @map("created_by")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  creator User   @relation(fields: [createdBy], references: [id])
+
+  @@index([tenantId, datum])
+  @@map("vergaderingen")
+}
+
+model CommunicatieDraft {
+  id             String             @id @default(uuid())
+  tenantId       String             @map("tenant_id")
+  schoolId       String?            @map("school_id")
+  actieId        String?            @map("actie_id")
+  kanaal         CommunicatieKanaal @default(EMAIL)
+  onderwerp      String
+  ontvangerNaam  String             @default("") @map("ontvanger_naam")
+  ontvangerEmail String?            @map("ontvanger_email")
+  intentie       String             @db.Text
+  concept        String             @db.Text
+  definitief     Boolean            @default(false)
+  verstuurdOp    DateTime?          @map("verstuurd_op")
+  createdBy      String             @map("created_by")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  school  School?  @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  creator User     @relation(fields: [createdBy], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, schoolId])
+  @@map("communicatie_drafts")
+}
+
+model BeleidsDocument {
+  id                    String                @id @default(uuid())
+  tenantId              String                @map("tenant_id")
+  schoolId              String?               @map("school_id")
+  titel                 String
+  domein                String
+  status                BeleidsDocumentStatus @default(ACTIEF)
+  vastgesteldDatum      DateTime?             @map("vastgesteld_datum")
+  evaluatieDatum        DateTime?             @map("evaluatie_datum")
+  volgendEvaluatieDatum DateTime?             @map("volgend_evaluatie_datum")
+  herinneringDagen      Int                   @default(30) @map("herinnering_dagen")
+  voortgangNotes        String                @default("") @map("voortgang_notes") @db.Text
+  documentId            String?               @map("document_id")
+  createdBy             String                @map("created_by")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  school   School?   @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  document Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  creator  User      @relation(fields: [createdBy], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, volgendEvaluatieDatum])
+  @@map("beleids_documenten")
+}
+
+// ─── Signal Scanner Models ─────────────────────────────────
+
+model OpsSignaal {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  schoolId     String   @map("school_id")
+  type         String
+  titel        String
+  beschrijving String   @db.Text
+  severity     String   @default("WAARSCHUWING")
+  payload      Json     @default("{}")
+  opgelost     Boolean  @default(false)
+  aangemeldOp  DateTime @default(now()) @map("aangemeld_op")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, type, opgelost])
+  @@index([tenantId, opgelost])
+  @@map("ops_signalen")
+}
+
+model MetricSnapshot {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  schoolId  String   @map("school_id")
+  snapdatum DateTime @default(now())
+  metrics   Json     @default("{}")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, snapdatum])
+  @@map("metric_snapshots")
 }

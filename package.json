@@ -12,6 +12,6 @@
     "node": ">=18"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["msgpackr-extract"]
+    "onlyBuiltDependencies": ["msgpackr-extract", "@prisma/client", "@prisma/engines", "esbuild", "prisma"]
   }
 }
