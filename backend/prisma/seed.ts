@@ -660,6 +660,385 @@ async function main() {
     ],
   });
 
+  // ─── Documenten (DocumentHub) ─────────────────────────────────────────
+  // Base64-encoded tekst; mimeType text/plain zodat download altijd werkt.
+
+  console.log('Seeding documenten...');
+
+  function toB64(text: string) {
+    return Buffer.from(text, 'utf8').toString('base64');
+  }
+
+  const docs = [
+    // ── De Regenboog ──────────────────────────────────────────────────────
+    {
+      schoolId: 'demo-01AB', type: 'SCHOOLPLAN', status: 'ACTUEEL',
+      titel: 'Schoolplan De Regenboog 2023-2027',
+      beschrijving: 'Meerjarig schoolplan met strategische doelen voor 2023-2027.',
+      mimeType: 'text/plain',
+      vervaltDatum: new Date('2027-07-31'),
+      fileData: toB64(`SCHOOLPLAN DE REGENBOOG 2023-2027
+Stichting Primair Amsterdam Centrum | BRIN: 01AB
+
+VISIE
+Wij geloven dat elk kind uniek is en het recht heeft op onderwijs dat aansluit bij zijn of haar mogelijkheden. De Regenboog streeft naar een lerende gemeenschap waarin kinderen, ouders en medewerkers samen groeien.
+
+MISSIE
+Wij bieden kwalitatief hoogstaand onderwijs in een veilige en stimulerende omgeving, waarbij we elk kind optimaal voorbereiden op verdere schoolloopbaan en maatschappelijke participatie.
+
+STRATEGISCHE DOELEN 2023-2027
+1. KWALITEIT VAN ONDERWIJS
+   - Verhoging CITO-eindscores naar minimaal 537 (huidig: 536.4)
+   - Volledige implementatie van adaptief onderwijs in alle groepen
+   - Professionalisering leerkrachten: elk teamlid volgt jaarlijks 2 trainingen
+
+2. PERSONEEL EN ORGANISATIE
+   - Terugdringing verzuim naar maximaal 4.5% (huidig: 5.2%)
+   - Zij-instromer begeleidingsprogramma voor 1-2 kandidaten per schooljaar
+   - Teambuilding: 2 teamdagen per jaar
+
+3. VEILIGHEID EN WELZIJN
+   - Handhaving anti-pestprotocol: nulmeting pesten jaarlijks
+   - Tevredenheidsscore ouders minimaal 8.0 (huidig: 8.1 ✓)
+   - Medewerkerswelzijn: score minimaal 7.5 (huidig: 7.6 ✓)
+
+4. FINANCIËN
+   - Sluitende meerjarenbegroting
+   - Maximale benutting beschikbare subsidies (NPO, Zij-instroom, Werkdruk)
+   - Reservevorming voor noodzakelijk groot onderhoud
+
+KWALITEITSZORG
+De school hanteert een jaarlijkse PDCA-cyclus met de volgende momenten:
+- September: Opstellen jaarplan op basis van schoolplan
+- Februari: Mid-year evaluatie met teamoverleg
+- Juni: Evaluatie schooljaar, aanpassing jaarplan
+- Juli: Bestuursrapportage
+
+VASTGESTELD: Bestuur Stichting Primair Amsterdam Centrum, september 2023
+MR INSTEMMING: 14 september 2023`),
+    },
+    {
+      schoolId: 'demo-01AB', type: 'JAARPLAN', status: 'ACTUEEL',
+      titel: 'Jaarplan De Regenboog 2025-2026',
+      beschrijving: 'Operationeel jaarplan schooljaar 2025-2026, vastgesteld door directie en MR.',
+      mimeType: 'text/plain',
+      vervaltDatum: new Date('2026-07-31'),
+      fileData: toB64(`JAARPLAN 2025-2026 — DE REGENBOOG
+
+PRIORITEITEN DIT SCHOOLJAAR
+
+PRIORITEIT 1: DIFFERENTIATIE IN DE KLAS
+Actie: Implementatie instructierooster voor niveaugroepen groep 3-6
+Verantwoordelijke: Teamleider middenbouw (Sandra de Wit)
+Indicator: 100% van groepen 3-6 werkt met gedifferentieerd instructierooster per 1 februari 2026
+Status (jan 2026): IN UITVOERING — 4 van 6 groepen geïmplementeerd
+
+PRIORITEIT 2: BEGRIJPEND LEZEN VERSTERKEN
+Actie: Implementatie methode 'Nieuwsbegrip' in groep 5-8 + wekelijkse leesdoelen
+Verantwoordelijke: IB (Roos Vermeer)
+Indicator: Verhoging CITO begrijpend lezen met gemiddeld 5 punten
+Status (jan 2026): OPGESTART — nulmeting december 2025 afgerond
+
+PRIORITEIT 3: HANDELINGSPLANNEN ACTUALISEREN
+Actie: IB herziet alle handelingsplannen na LVS-ronde januari 2026
+Verantwoordelijke: IB (Roos Vermeer)
+Deadline: 1 maart 2026
+Status (jan 2026): GEPLAND — LVS-ronde loopt
+
+PRIORITEIT 4: OUDERPARTICIPATIE
+Actie: Herinvoering thematische ouderavonden (2x per jaar)
+Verantwoordelijke: Directie
+Datum: Oktober 2025 ✓, Maart 2026 gepland
+
+FORMATIE 2025-2026
+Totaal begroting: 13.0 FTE | Ingevuld: 12.2 FTE | Vacature: 0.8 FTE leerkracht gr. 7
+Zij-instromer: Ahmed Yilmaz (gr. 7, begeleid door Linda Smit) — gestart 1 februari 2026
+
+BEGROTING HIGHLIGHTS
+NPO-middelen: n.v.t. (school heeft geen leervertragingsopgave)
+Werkdrukmiddelen: €28.160 ingezet voor 0.4 FTE OOP extra
+Zij-instroomsubsidie: €28.500 toegekend, projectperiode t/m jan 2027`),
+    },
+    {
+      schoolId: 'demo-01AB', type: 'VEILIGHEIDSBELEID', status: 'ACTUEEL',
+      titel: 'Sociaal Veiligheidsplan De Regenboog 2024-2026',
+      beschrijving: 'Anti-pestprotocol, meldcode, veiligheidsreglement en crisisprotocol.',
+      mimeType: 'text/plain',
+      vervaltDatum: new Date('2026-06-01'),
+      fileData: toB64(`SOCIAAL VEILIGHEIDSPLAN DE REGENBOOG 2024-2026
+
+1. UITGANGSPUNTEN
+De Regenboog staat voor een veilige school voor alle kinderen, medewerkers en ouders.
+We hanteren de 4-G methode: Gedrag, Gevoel, Gevolg, Gewenst gedrag.
+
+2. ANTI-PESTPROTOCOL
+Definitie: Pesten is herhaaldelijk negatief gedrag gericht op dezelfde persoon.
+Aanpak: Kanjertraining (alle groepen), ABC-aanpak bij incidenten, betrekken ouders.
+Vertrouwenspersoon leerlingen: Juf Sandra (gr. 4)
+Coördinator sociale veiligheid: Directeur Jan de Vries
+
+3. MELDCODE HUISELIJK GEWELD EN KINDERMISHANDELING
+Stappen: Signaleren → Overleggen (IBP) → Afwegen → Beslissen → Handelen
+Contactpersoon: IB Roos Vermeer
+
+4. VEILIGHEIDSREGLEMENT
+- BHV-certificaten: 8 medewerkers gecertificeerd (verplicht: 6) ✓
+- Ontruimingsoefening: 12 februari 2026 uitgevoerd ✓
+- EHBO-certificaten: 3 medewerkers ✓
+- Brandmeldinstallatie gekeurd: januari 2026 ✓
+
+5. NOODPROCEDURES
+- Brand: Ontruimingsplan beschikbaar bij receptie en in elke klas
+- Medisch incident: AED aanwezig, 4 BHV'ers opgeleid
+- Lockdown: Protocol aanwezig, geoefend september 2025
+
+VASTGESTELD: Juni 2024 | Evaluatie: Juni 2026`),
+    },
+
+    // ── Het Kompas ────────────────────────────────────────────────────────
+    {
+      schoolId: 'demo-02CD', type: 'RESULTATENANALYSE', status: 'ACTUEEL',
+      titel: 'Resultatenanalyse Het Kompas 2024-2025',
+      beschrijving: 'Analyse van leerlingresultaten CITO 2025. Toont significante achterstanden in rekenen en begrijpend lezen.',
+      mimeType: 'text/plain',
+      vervaltDatum: null,
+      fileData: toB64(`RESULTATENANALYSE HET KOMPAS 2024-2025
+
+SAMENVATTING
+De resultaten van Het Kompas over schooljaar 2024-2025 geven reden tot zorg.
+Het gemiddelde eindniveau (CITO) ligt 5.4 punten onder het landelijk gemiddelde.
+Dit is een verslechtering ten opzichte van 2023-2024 (-2.1 punten).
+
+CITO RESULTATEN GROEP 8 (2025)
+Gemiddelde vaardigheidsscore: 529.8 (landelijk: 535.2)
+Afstand tot norm: -5.4 punten
+Trend: Dalend (-2.1 punt vs. vorig jaar)
+
+Uitsplitsing per vakgebied:
+- Rekenen/Wiskunde: 527.1 (landelijk 534.8) → ONVOLDOENDE
+- Lezen: 531.4 (landelijk 536.1) → ONVOLDOENDE
+- Taalverzorging: 530.8 (landelijk 534.9) → ONVOLDOENDE
+- Begrijpend lezen: 530.2 (landelijk 535.5) → ONVOLDOENDE
+
+ANALYSE OORZAKEN
+1. PERSONELE INSTABILITEIT
+   - 19 niet-vervulde vervangingsdagen (leerkracht gr. 5 langdurig ziek)
+   - Groep 5 heeft 4 verschillende invallers gehad in Q2
+   - Weinig continuïteit in begeleiding zwakke leerlingen
+
+2. GEEN ACTUELE HANDELINGSPLANNEN
+   - 8 leerlingen met extra ondersteuningsbehoefte zonder actueel plan
+   - IB was 6 weken afwezig (ziekte) → achterstand in zorgcoördinatie
+
+3. LEERACHTERSTAND NA INSTROOM
+   - 12% van leerlingen heeft achterstand bij instroom (hoog OAB-percentage)
+   - Onvoldoende inzet NPO-interventies (besteding 38% in plaats van >50%)
+
+AANBEVELINGEN
+1. Versnelling NPO-besteding: rekenspecialist uitbreiden naar 3 dagen/week
+2. Aanstelling vaste intern begeleider (vacature openstaat)
+3. Implementatie leesbevorderingsprogramma voor zwakste 20%
+4. Herziening groeperingsplan voor maximale instructietijd
+
+OPGESTELD DOOR: Marie Jansen (directeur) | September 2025`),
+    },
+    {
+      schoolId: 'demo-02CD', type: 'VEILIGHEIDSBELEID', status: 'VERLOPEN',
+      titel: 'Veiligheidsbeleid Het Kompas 2022-2024',
+      beschrijving: 'VERLOPEN document — moet worden herzien. Ontbreekt als bewijs voor VE1.',
+      mimeType: 'text/plain',
+      vervaltDatum: new Date('2024-06-01'),
+      fileData: toB64(`VEILIGHEIDSBELEID HET KOMPAS 2022-2024
+[VERLOPEN — Dit document is niet meer actueel]
+
+ANTI-PESTPROTOCOL (versie 2022)
+De school hanteert een zero-tolerance beleid tegen pesten.
+
+NOODPROCEDURES
+- Ontruimingsplan: aanwezig
+- BHV'ers: 5 gecertificeerd
+
+[ACTIE VEREIST: Dit beleid loopt af per 1 juni 2024 en is niet verlengd.
+Een geactualiseerd veiligheidsbeleid ontbreekt. Dit wordt gesignaleerd als
+een risico in de inspectiestandaard VE1.]`),
+    },
+    {
+      schoolId: 'demo-02CD', type: 'JAARPLAN', status: 'CONCEPT',
+      titel: 'Jaarplan Het Kompas 2025-2026 (concept)',
+      beschrijving: 'Concept-jaarplan — nog niet vastgesteld door MR. Kwaliteitsagenda ontbreekt nog.',
+      mimeType: 'text/plain',
+      vervaltDatum: null,
+      fileData: toB64(`JAARPLAN HET KOMPAS 2025-2026 — CONCEPT
+[STATUS: CONCEPT — In afwachting van MR-instemming]
+
+PRIORITEITEN (voorstel directie)
+
+1. RESULTATENVERBETERING REKENEN
+Probleem: CITO rekenen 7.7 punt onder landelijk gemiddeld
+Actie: Inzet rekenspecialist (NPO-gefinancierd), extra instructietijd gr. 5-7
+Verantwoordelijke: Marie Jansen + IB (vacature)
+Deadline: Resultaatmeting CITO jan 2026
+
+2. INVULLEN VACATURES
+Openstaand: 1.2 FTE leerkracht, 0.5 FTE intern begeleider
+Actie: Werving zij-instromer, netwerken via Onderwijscoöperatie
+Verantwoordelijke: Marie Jansen + Bestuur
+Deadline: 1 mei 2026
+
+3. VERZUIMAANPAK
+Probleem: 9.8% verzuim, 4 langdurig zieken
+Actie: Gesprekscyclus starten, arbodienst inschakelen, werkdrukanalyse
+Verantwoordelijke: Marie Jansen + Thomas Meijer (ops)
+Deadline: Evaluatie per Q2 2026
+
+OPMERKING: Kwaliteitsagenda 2025-2026 is nog niet formeel vastgesteld.
+Dit moet worden opgelost vóór eventueel inspectiebezoek.`),
+    },
+
+    // ── De Ontdekking ─────────────────────────────────────────────────────
+    {
+      schoolId: 'demo-03EF', type: 'PEDAGOGISCH_BELEIDSPLAN', status: 'ACTUEEL',
+      titel: 'Pedagogisch Beleidsplan De Ontdekking 2024-2026',
+      beschrijving: 'Pedagogische visie, aanpak positief schoolklimaat en sociaal-emotionele ontwikkeling.',
+      mimeType: 'text/plain',
+      vervaltDatum: new Date('2026-08-31'),
+      fileData: toB64(`PEDAGOGISCH BELEIDSPLAN DE ONTDEKKING 2024-2026
+
+1. PEDAGOGISCHE VISIE
+De Ontdekking gelooft in het kind als ontdekker van de eigen wereld. Wij creëren een omgeving
+waarin nieuwsgierigheid, samenwerking en eigenaarschap centraal staan.
+
+Kernwaarden: Veiligheid — Vertrouwen — Groei — Verbinding
+
+2. POSITIEF SCHOOLKLIMAAT
+Aanpak: Taakspel (alle groepen 1-8) + maandelijkse schoolklimaatmeting
+Schoolklimaatcijfer 2025: 7.9/10 (doel: ≥7.5 ✓)
+
+Aanpak sociaal-emotioneel leren:
+- Groep 1-4: Taakspel + kringgesprekken
+- Groep 5-8: Goed in je vel (SEL-programma) + mentorgesprekken
+
+3. PEDAGOGISCH HANDELEN
+Verwachtingen aan medewerkers:
+- Positieve benadering: 5x meer positieve feedback dan correctie
+- Duidelijke klassenafspraken, zichtbaar in klas
+- Actieve ouderbetrokkenheid via Ouder-App
+
+4. ZORGSTRUCTUUR
+IB: Renske Hoek (0.6 FTE)
+Zorgplan: Geactualiseerd september 2024 ✓
+Handelingsplannen: 9 actieve plannen (bijgewerkt na LVS-ronde jan 2026) ✓
+Externe partners: Samenwerkingsverband, GGZ-preventie, buurtmaatschappelijk werk
+
+5. OMGANG MET DIVERSITEIT
+27% van leerlingen heeft thuistaal anders dan Nederlands
+VVE-programma (Kaleidoscoop): 18 peuters/kleuters deelnemen
+OAB-inzet: taalondersteuning 4x/week voor zwakste taalgroep
+
+VASTGESTELD: September 2024 | Evaluatie: Juni 2026`),
+    },
+    {
+      schoolId: 'demo-03EF', type: 'IB_JAARVERSLAG', status: 'ACTUEEL',
+      titel: 'IB Jaarverslag De Ontdekking 2024-2025',
+      beschrijving: 'Jaarverslag intern begeleiding: leerlingzorg, ondersteuningsbehoeften en resultaten.',
+      mimeType: 'text/plain',
+      vervaltDatum: null,
+      fileData: toB64(`IB JAARVERSLAG DE ONTDEKKING 2024-2025
+Opgesteld door: Renske Hoek (Intern Begeleider)
+
+LEERLINGPOPULATIE
+Totaal leerlingen: 180
+Leerlingen met extra ondersteuningsbehoefte: 24 (13.3%)
+- Eigen middelen school: 18 leerlingen
+- Extra ondersteuning SWV: 6 leerlingen (TLV's)
+- Dyslexieverklaring: 7 leerlingen
+
+PRESTATIES ZORGSTRUCTUUR
+Handelingsplannen: 9 opgesteld en geëvalueerd ✓
+OPP's (Ontwikkelingsperspectief): 6 actueel bijgehouden ✓
+Groepsplannen: Alle groepen 1-8 actueel ✓
+
+ZORGSIGNALEN SCHOOLJAAR
+Significant: 1 medewerker langdurig ziek (burn-out, aug 2025–heden)
+Impact: IB heeft extra taken overgenomen → werkdruk verhoogd
+Maatregel: Prioritering zorgcoördinatie, tijdelijk minder directe begeleiding
+
+UITSTROOM ADVIES GROEP 8
+VWO/Gymnasium: 2 (11%)
+HAVO: 4 (22%)
+VMBO-TL: 7 (39%)
+VMBO-KB/BB: 5 (28%)
+Vergelijking vorig jaar: vergelijkbaar (+1% TL, -1% BB)
+
+AANDACHTSPUNTEN KOMEND JAAR
+1. Verzuim IB oplossen: vervanging nodig bij uitval (protocol ontbreekt)
+2. Interventieplan rekenen uitvoeren (zie PDCA-item)
+3. VVE-evaluatie (resultaten Kaleidoscoop na 1 jaar)
+
+CONCLUSIE
+De zorgstructuur is stevig. De impact van het hoge personeelsverzuim op de IB-functie
+is het grootste risico voor de komende periode.`),
+    },
+  ];
+
+  for (const doc of docs) {
+    await prisma.document.create({
+      data: {
+        tenantId: tenant.id,
+        schoolId: doc.schoolId,
+        titel: doc.titel,
+        beschrijving: doc.beschrijving,
+        type: doc.type as never,
+        status: doc.status as never,
+        mimeType: doc.mimeType,
+        fileData: doc.fileData,
+        vervaltDatum: doc.vervaltDatum,
+        uploadedBy: adminUser.id,
+        s3Key: '',
+        versie: 1,
+      },
+    });
+  }
+  console.log(`  ${docs.length} documenten aangemaakt`);
+
+  // ─── PdcaSuggestions (voor Morning Brief aggregator) ──────────────────
+  // Dit simuleert AI-suggesties die normaal uit documentanalyse komen.
+
+  console.log('Seeding PDCA suggesties...');
+  await prisma.pdcaSuggestion.createMany({
+    skipDuplicates: true,
+    data: [
+      {
+        schoolId: 'demo-02CD', schooljaar: '2025-2026', fase: 'PLAN',
+        titel: 'Stel een actueel zorgplan op (OP4 ontbreekt als bewijs)',
+        beschrijving: 'De resultatenanalyse 2024-2025 toont dat 8 leerlingen met extra ondersteuningsbehoefte geen actueel handelingsplan hebben. Zonder dit plan voldoet de school niet aan inspectiestandaard OP4.',
+        bronSectie: 'Resultatenanalyse 2024-2025 — Analyse oorzaken',
+        vertrouwen: 0.91, status: 'pending',
+      },
+      {
+        schoolId: 'demo-02CD', schooljaar: '2025-2026', fase: 'PLAN',
+        titel: 'Voer een oudertevredenheidsonderzoek uit (VE2 ontbreekt)',
+        beschrijving: 'Het jaarlijkse oudertevredenheidsonderzoek is in 2025 niet uitgevoerd. Dit is vereist als bewijs voor VE2. Inplannen voor april 2026 is nog mogelijk.',
+        bronSectie: 'Jaarplan Het Kompas 2025-2026 — Concept',
+        vertrouwen: 0.85, status: 'pending',
+      },
+      {
+        schoolId: 'demo-02CD', schooljaar: '2025-2026', fase: 'DO',
+        titel: 'Analyseer oorzaken dalende CITO-scores rekenen',
+        beschrijving: 'CITO rekenen daalt nu 3 jaar op rij. De resultatenanalyse noemt personele instabiliteit als oorzaak, maar vraagt om een diepere didactische analyse. Rekenspecialist inzetten voor een grondige analyse per klas.',
+        bronSectie: 'Resultatenanalyse 2024-2025 — CITO Resultaten',
+        vertrouwen: 0.88, status: 'pending',
+      },
+      {
+        schoolId: 'demo-03EF', schooljaar: '2025-2026', fase: 'ACT',
+        titel: 'Maak een vervangingsprotocol voor de IB-functie',
+        beschrijving: 'Het IB jaarverslag signaleert dat er geen protocol is voor vervanging bij uitval van de IB\'er. Gegeven het hoge verzuim in het team is dit een urgent risico voor de zorgstructuur.',
+        bronSectie: 'IB Jaarverslag 2024-2025 — Aandachtspunten',
+        vertrouwen: 0.82, status: 'pending',
+      },
+    ],
+  });
+
   console.log('\n✅ Seed voltooid!');
   console.log('\n📧 Login accounts:');
   console.log('  admin@demo.nl     / admin123  (Bestuur Admin — Sophie van den Berg)');
