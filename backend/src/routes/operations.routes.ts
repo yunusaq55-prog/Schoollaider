@@ -10,6 +10,8 @@ import * as schoolOverviewService from '../services/operations/school-overview.s
 import * as beleidService from '../services/operations/beleid.service.js';
 import * as predictiveService from '../services/operations/predictive.service.js';
 import * as documentSearchService from '../services/operations/document-search.service.js';
+import { getSchoolDetail } from '../services/operations/school-detail.service.js';
+import prisma from '../utils/prisma.js';
 
 const router = Router();
 
@@ -249,6 +251,73 @@ router.get('/analytics/predictive', async (req, res, next) => {
   try {
     const insights = await predictiveService.getPredictiveInsights(req.user!.tenantId);
     res.json(insights);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── OpsSignalen ──────────────────────────────────────────
+
+router.get('/signalen', async (req, res, next) => {
+  try {
+    const { opgelost, schoolId } = req.query as Record<string, string>;
+    const signalen = await prisma.opsSignaal.findMany({
+      where: {
+        tenantId: req.user!.tenantId,
+        opgelost: opgelost === 'true' ? true : false,
+        ...(schoolId ? { schoolId } : {}),
+      },
+      include: { school: { select: { naam: true } } },
+      orderBy: [{ severity: 'desc' }, { aangemeldOp: 'desc' }],
+    });
+    res.json(signalen);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/signalen/:id', requirePermission('operations:manage'), async (req, res, next) => {
+  try {
+    const signaal = await prisma.opsSignaal.update({
+      where: { id: req.params.id },
+      data: { opgelost: req.body.opgelost ?? true },
+    });
+    res.json(signaal);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── School Detail ────────────────────────────────────────
+
+router.get('/school/:schoolId/detail', async (req, res, next) => {
+  try {
+    const detail = await getSchoolDetail(req.user!.tenantId, req.params.schoolId);
+    res.json(detail);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── Notification Counts ──────────────────────────────────
+
+router.get('/notifications/count', async (req, res, next) => {
+  try {
+    const tenantId = req.user!.tenantId;
+    const schoolIds = (await prisma.school.findMany({
+      where: { tenantId, status: 'ACTIEF' },
+      select: { id: true },
+    })).map((s) => s.id);
+
+    const [morningBrief, hr, subsidie] = await Promise.all([
+      prisma.opsSignaal.count({ where: { tenantId, opgelost: false, severity: 'URGENT' } }),
+      prisma.hrSignaal.count({ where: { schoolId: { in: schoolIds }, status: { not: 'AFGEHANDELD' } } }),
+      prisma.subsidieSignaal.count({
+        where: { tenantId, gelezen: false, urgentie: { in: ['KRITIEK', 'WAARSCHUWING'] } },
+      }),
+    ]);
+
+    res.json({ morningBrief, hr, subsidie });
   } catch (err) {
     next(err);
   }

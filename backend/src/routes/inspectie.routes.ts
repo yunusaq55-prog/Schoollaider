@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { tenantContext } from '../middleware/tenantContext.js';
 import * as inspectieService from '../services/inspectie.service.js';
+import prisma from '../utils/prisma.js';
 
 const router = Router();
 
@@ -49,6 +50,38 @@ router.get('/school/:schoolId/standaard/:standaardId/evidence', async (req, res,
       req.params.standaardId,
     );
     res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/school/:schoolId/bulk-update', async (req, res, next) => {
+  try {
+    const { updates } = req.body as {
+      updates: Array<{ standaardId: string; status: 'AANTOONBAAR' | 'ONVOLLEDIG' | 'ONTBREEKT' }>;
+    };
+    if (!Array.isArray(updates) || updates.length === 0) {
+      res.status(400).json({ error: 'updates array is verplicht' });
+      return;
+    }
+    const result = await prisma.$transaction(
+      updates.map(({ standaardId, status }) =>
+        prisma.schoolStandaardStatus.upsert({
+          where: { schoolId_standaardId: { schoolId: req.params.schoolId, standaardId } },
+          update: { status },
+          create: {
+            schoolId: req.params.schoolId,
+            standaardId,
+            status,
+            bewijs: '',
+            evaluatie: '',
+            actueel: false,
+            opmerking: '',
+          },
+        })
+      ),
+    );
+    res.json(result);
   } catch (err) {
     next(err);
   }

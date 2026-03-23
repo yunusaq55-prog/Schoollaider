@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../auth/AuthContext';
+import api from '../api/client';
 import { useSchoolContext } from '../context/SchoolContext';
 import { SchoolSelector } from '../components/SchoolSelector';
 import {
@@ -115,6 +117,15 @@ const operationsNav: NavGroup = {
   ],
 };
 
+function NotifBadge({ count }: { count?: number }) {
+  if (!count || count === 0) return null;
+  return (
+    <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+      {count > 99 ? '99+' : count}
+    </span>
+  );
+}
+
 export function DashboardLayout() {
   const { user, logout } = useAuth();
   const { isBestuurView, selectedSchool } = useSchoolContext();
@@ -124,6 +135,13 @@ export function DashboardLayout() {
     user?.role === Role.OPERATIONEEL_MANAGER ||
     user?.role === Role.BESTUUR_ADMIN ||
     user?.role === Role.SUPER_ADMIN;
+
+  const { data: notifCounts } = useQuery<{ morningBrief: number; hr: number; subsidie: number }>({
+    queryKey: ['notification-counts'],
+    queryFn: () => api.get('/operations/notifications/count').then((r) => r.data),
+    refetchInterval: 5 * 60 * 1000,
+    enabled: showOperationsNav,
+  });
 
   const navEntries = isBestuurView
     ? bestuurNav
@@ -153,7 +171,7 @@ export function DashboardLayout() {
     .slice(0, 2)
     .toUpperCase() ?? '?';
 
-  function renderNavItem(item: NavItem, isChild = false) {
+  function renderNavItem(item: NavItem, isChild = false, badgeCount?: number) {
     const Icon = item.icon;
     const isActive = location.pathname === item.path;
     return (
@@ -170,17 +188,29 @@ export function DashboardLayout() {
       >
         <Icon size={isChild ? 16 : 18} className={isActive ? 'text-primary-600' : 'text-gray-400'} />
         {item.label}
-        {isActive && (
+        {badgeCount ? (
+          <NotifBadge count={badgeCount} />
+        ) : isActive ? (
           <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary-600" />
-        )}
+        ) : null}
       </Link>
     );
   }
+
+  const groupBadges: Record<string, number | undefined> = {
+    'HR Module': notifCounts?.hr,
+    'Subsidie Genie': notifCounts?.subsidie,
+  };
+
+  const itemBadges: Record<string, number | undefined> = {
+    '/operations': notifCounts?.morningBrief,
+  };
 
   function renderNavGroup(group: NavGroup) {
     const isExpanded = expandedGroups[group.label] ?? true;
     const GroupIcon = group.icon;
     const isGroupActive = group.children.some((c) => location.pathname === c.path || (c.path !== '/' && location.pathname.startsWith(c.path)));
+    const groupBadge = groupBadges[group.label];
 
     return (
       <div key={group.label}>
@@ -194,6 +224,7 @@ export function DashboardLayout() {
         >
           <GroupIcon size={18} className={isGroupActive ? 'text-primary-600' : 'text-gray-500'} />
           {group.label}
+          <NotifBadge count={groupBadge} />
           <ChevronDown
             size={14}
             className={`ml-auto text-gray-400 transition-transform duration-200 ${
@@ -203,7 +234,7 @@ export function DashboardLayout() {
         </button>
         {isExpanded && (
           <div className="mt-0.5 space-y-0.5">
-            {group.children.map((child) => renderNavItem(child, true))}
+            {group.children.map((child) => renderNavItem(child, true, itemBadges[child.path]))}
           </div>
         )}
       </div>

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { Grid3x3 } from 'lucide-react';
+import { Grid3x3, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api/client';
 
 interface SchoolOverviewRow {
@@ -28,6 +29,7 @@ const HR_RISICO_COLORS: Record<string, string> = {
 };
 
 export default function SchoolOverviewPage() {
+  const navigate = useNavigate();
   const { data: rows = [], isLoading } = useQuery<SchoolOverviewRow[]>({
     queryKey: ['school-overview'],
     queryFn: () => api.get('/operations/school-overview').then((r) => r.data),
@@ -62,11 +64,16 @@ export default function SchoolOverviewPage() {
               <th className="px-4 py-3 text-left font-medium text-gray-600">Acties</th>
               <th className="px-4 py-3 text-left font-medium text-gray-600">Subsidies</th>
               <th className="px-4 py-3 text-left font-medium text-gray-600">Status</th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.map((row) => (
-              <tr key={row.schoolId} className="hover:bg-gray-50">
+              <tr
+                key={row.schoolId}
+                className="hover:bg-gray-50 cursor-pointer"
+                onClick={() => navigate(`/operations/scholen/${row.schoolId}`)}
+              >
                 <td className="px-4 py-3 font-medium text-gray-900">{row.schoolNaam}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${HR_RISICO_COLORS[row.hrRisico] ?? ''}`}>
@@ -102,11 +109,14 @@ export default function SchoolOverviewPage() {
                 <td className="px-4 py-3">
                   <div className={`w-3 h-3 rounded-full ${RAG_COLORS[row.rag]}`} title={row.rag} />
                 </td>
+                <td className="px-4 py-3 text-right">
+                  <ChevronRight className="h-4 w-4 text-gray-300 ml-auto" />
+                </td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={9} className="px-4 py-8 text-center text-gray-400">
                   Geen scholen gevonden.
                 </td>
               </tr>

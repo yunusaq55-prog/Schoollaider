@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useSchoolContext } from '../context/SchoolContext';
 import { StatusBadge, RisicoBadge } from '../components/StatusBadge';
@@ -46,6 +47,7 @@ const alertIcons: Record<string, typeof Bell> = {
 
 export function BestuurDashboardPage() {
   const { selectSchool } = useSchoolContext();
+  const navigate = useNavigate();
 
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [overview, setOverview] = useState<SchoolOverviewRow[]>([]);
@@ -253,7 +255,7 @@ export function BestuurDashboardPage() {
               {sortedOverview().map((row) => (
                 <tr
                   key={row.schoolId}
-                  onClick={() => selectSchool(row.schoolId)}
+                  onClick={() => { selectSchool(row.schoolId); navigate(`/operations/scholen/${row.schoolId}`); }}
                   className="cursor-pointer border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/50"
                 >
                   <td className="whitespace-nowrap px-6 py-4">

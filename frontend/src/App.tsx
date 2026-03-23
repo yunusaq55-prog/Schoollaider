@@ -21,6 +21,7 @@ import { SubsidieSignalenPage } from './pages/subsidie/SubsidieSignalenPage';
 import OperationsDashboardPage from './pages/operations/OperationsDashboardPage';
 import ActiesPage from './pages/operations/ActiesPage';
 import SchoolOverviewPage from './pages/operations/SchoolOverviewPage';
+import SchoolDetailPage from './pages/operations/SchoolDetailPage';
 import VergaderingenPage from './pages/operations/VergaderingenPage';
 import CommunicatiePage from './pages/operations/CommunicatiePage';
 import PredictiveAnalyticsPage from './pages/operations/PredictiveAnalyticsPage';
@@ -57,6 +58,7 @@ export default function App() {
         {/* Operations Manager */}
         <Route path="/operations" element={<OperationsDashboardPage />} />
         <Route path="/operations/scholen" element={<SchoolOverviewPage />} />
+        <Route path="/operations/scholen/:schoolId" element={<SchoolDetailPage />} />
         <Route path="/operations/acties" element={<ActiesPage />} />
         <Route path="/operations/vergaderingen" element={<VergaderingenPage />} />
         <Route path="/operations/communicatie" element={<CommunicatiePage />} />

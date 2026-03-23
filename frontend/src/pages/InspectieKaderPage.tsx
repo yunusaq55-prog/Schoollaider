@@ -4,7 +4,7 @@ import { useSchoolContext } from '../context/SchoolContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { ComplianceMatrixView } from '../components/ComplianceMatrixView';
-import { ChevronDown, ClipboardCheck, FileCheck, Shield } from 'lucide-react';
+import { ChevronDown, ClipboardCheck, FileCheck, Shield, CheckCheck, X } from 'lucide-react';
 import type { InspectieDomein, BewijsStatus } from '@schoollaider/shared';
 
 interface StandaardWithStatus {
@@ -45,6 +45,8 @@ export function InspectieKaderPage() {
   const [loading, setLoading] = useState(true);
   const [openDomains, setOpenDomains] = useState<Record<string, boolean>>({});
   const [editingStatus, setEditingStatus] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   useEffect(() => {
     if (selectedSchoolId) {
@@ -86,6 +88,38 @@ export function InspectieKaderPage() {
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function selectDomein(ids: string[]) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return next;
+    });
+  }
+
+  async function handleBulkUpdate(ids: string[], status: BewijsStatus) {
+    if (!selectedSchoolId || ids.length === 0) return;
+    setBulkSaving(true);
+    try {
+      await api.post(`/inspectie/school/${selectedSchoolId}/bulk-update`, {
+        updates: ids.map((standaardId) => ({ standaardId, status })),
+      });
+      setSelectedIds(new Set());
+      await fetchData();
+    } catch (err: any) {
+      console.error('[InspectieKader] Bulk update mislukt:', err?.message);
+    } finally {
+      setBulkSaving(false);
+    }
+  }
+
   async function handleActueelChange(standaardId: string, actueel: boolean) {
     if (!selectedSchoolId) return;
     try {
@@ -114,7 +148,46 @@ export function InspectieKaderPage() {
 
   return (
     <div className="animate-fade-in space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight text-gray-900">Inspectiekader</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Inspectiekader</h1>
+      </div>
+
+      {/* Bulk action toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="sticky top-0 z-10 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 shadow-sm">
+          <CheckCheck className="h-4 w-4 text-blue-600 flex-shrink-0" />
+          <span className="text-sm font-medium text-blue-800">{selectedIds.size} geselecteerd</span>
+          <div className="ml-2 flex items-center gap-2">
+            <button
+              onClick={() => handleBulkUpdate([...selectedIds], 'AANTOONBAAR')}
+              disabled={bulkSaving}
+              className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              Aantoonbaar
+            </button>
+            <button
+              onClick={() => handleBulkUpdate([...selectedIds], 'ONVOLLEDIG')}
+              disabled={bulkSaving}
+              className="rounded-md bg-yellow-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-yellow-600 disabled:opacity-50"
+            >
+              Onvolledig
+            </button>
+            <button
+              onClick={() => handleBulkUpdate([...selectedIds], 'ONTBREEKT')}
+              disabled={bulkSaving}
+              className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              Ontbreekt
+            </button>
+          </div>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="ml-auto rounded p-1 text-blue-400 hover:text-blue-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* AI Compliance Matrix */}
       <ComplianceMatrixView />
@@ -151,6 +224,25 @@ export function InspectieKaderPage() {
                 <span className="text-xs text-gray-400">
                   {aantoonbaar}/{total} aantoonbaar
                 </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    selectDomein(standaarden.map((s) => s.id));
+                  }}
+                  className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
+                >
+                  Selecteer alles
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleBulkUpdate(standaarden.map((s) => s.id), 'AANTOONBAAR');
+                  }}
+                  disabled={bulkSaving}
+                  className="rounded px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50 disabled:opacity-50"
+                >
+                  Alles aantoonbaar
+                </button>
                 <ChevronDown
                   className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
                     openDomains[domein.id] ? 'rotate-180' : ''
@@ -165,6 +257,24 @@ export function InspectieKaderPage() {
                 <table className="min-w-full">
                   <thead>
                     <tr className="bg-gray-50/50">
+                      <th className="px-4 py-3 w-8">
+                        <input
+                          type="checkbox"
+                          checked={standaarden.length > 0 && standaarden.every((s) => selectedIds.has(s.id))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              selectDomein(standaarden.map((s) => s.id));
+                            } else {
+                              setSelectedIds((prev) => {
+                                const next = new Set(prev);
+                                standaarden.forEach((s) => next.delete(s.id));
+                                return next;
+                              });
+                            }
+                          }}
+                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Code</th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Standaard</th>
                       <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
@@ -177,7 +287,15 @@ export function InspectieKaderPage() {
                     {standaarden.map((standaard) => {
                       const ss = standaard.schoolStatus;
                       return (
-                        <tr key={standaard.id} className="border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/50">
+                        <tr key={standaard.id} className={`border-b border-gray-50 transition-colors last:border-0 hover:bg-gray-50/50 ${selectedIds.has(standaard.id) ? 'bg-blue-50/50' : ''}`}>
+                          <td className="px-4 py-4 w-8">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(standaard.id)}
+                              onChange={() => toggleSelect(standaard.id)}
+                              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                            />
+                          </td>
                           <td className="whitespace-nowrap px-6 py-4">
                             <span className="rounded-md bg-gray-100 px-2 py-1 text-xs font-mono text-gray-500">{standaard.code}</span>
                           </td>
@@ -227,7 +345,7 @@ export function InspectieKaderPage() {
                     })}
                     {standaarden.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-400">
+                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-400">
                           Geen standaarden in dit domein.
                         </td>
                       </tr>

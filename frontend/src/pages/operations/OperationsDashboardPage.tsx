@@ -35,6 +35,7 @@ const BRON_COLORS: Record<string, string> = {
   Subsidie: 'bg-purple-100 text-purple-700',
   PDCA: 'bg-indigo-100 text-indigo-700',
   Compliance: 'bg-gray-100 text-gray-700',
+  Operationeel: 'bg-teal-100 text-teal-700',
 };
 
 function PrioriteitBadge({ prioriteit }: { prioriteit: string }) {
@@ -57,6 +58,7 @@ export default function OperationsDashboardPage() {
   const queryClient = useQueryClient();
   const [actieLoading, setActieLoading] = useState<string | null>(null);
   const [actieResult, setActieResult] = useState<{ signaalId: string; actie: object } | null>(null);
+  const [opgelostIds, setOpgelostIds] = useState<Set<string>>(new Set());
 
   const { data: brief, isLoading, error } = useQuery<MorningBrief>({
     queryKey: ['morning-brief'],
@@ -74,6 +76,18 @@ export default function OperationsDashboardPage() {
       const { data } = await api.post('/operations/acties/from-signaal', { signaalId, signaalType });
       setActieResult({ signaalId, actie: data });
       queryClient.invalidateQueries({ queryKey: ['acties'] });
+    } finally {
+      setActieLoading(null);
+    }
+  }
+
+  async function oplosSignaal(signaalId: string) {
+    setActieLoading(signaalId);
+    try {
+      await api.patch(`/operations/signalen/${signaalId}`, { opgelost: true });
+      setOpgelostIds((prev) => new Set([...prev, signaalId]));
+      queryClient.invalidateQueries({ queryKey: ['morning-brief'] });
+      queryClient.invalidateQueries({ queryKey: ['notification-counts'] });
     } finally {
       setActieLoading(null);
     }
@@ -190,24 +204,44 @@ export default function OperationsDashboardPage() {
                 <p className="text-xs text-gray-500 mt-0.5">{item.actie}</p>
               </div>
 
-              <div className="flex-shrink-0">
-                {actieResult?.signaalId === item.signaalId ? (
+              <div className="flex-shrink-0 flex items-center gap-2">
+                {opgelostIds.has(item.signaalId) ? (
+                  <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                    <CheckCircle className="h-3 w-3" /> Opgelost
+                  </span>
+                ) : actieResult?.signaalId === item.signaalId ? (
                   <span className="text-xs text-green-600 font-medium flex items-center gap-1">
                     <CheckCircle className="h-3 w-3" /> Actie aangemaakt
                   </span>
                 ) : (
-                  <button
-                    onClick={() => maakActie(item.signaalId, item.signaalType)}
-                    disabled={actieLoading === item.signaalId}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {actieLoading === item.signaalId ? (
-                      <RefreshCw className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <ChevronRight className="h-3 w-3" />
+                  <>
+                    {item.bron === 'Operationeel' && (
+                      <button
+                        onClick={() => oplosSignaal(item.signaalId)}
+                        disabled={actieLoading === item.signaalId}
+                        className="flex items-center gap-1 px-3 py-1.5 text-xs border border-teal-500 text-teal-700 rounded-lg hover:bg-teal-50 disabled:opacity-50"
+                      >
+                        {actieLoading === item.signaalId ? (
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <CheckCircle className="h-3 w-3" />
+                        )}
+                        Oplossen
+                      </button>
                     )}
-                    Maak Actie
-                  </button>
+                    <button
+                      onClick={() => maakActie(item.signaalId, item.signaalType)}
+                      disabled={actieLoading === item.signaalId}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {actieLoading === item.signaalId ? (
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3" />
+                      )}
+                      Maak Actie
+                    </button>
+                  </>
                 )}
               </div>
             </div>

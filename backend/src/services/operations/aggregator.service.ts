@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 export interface AggregatedSignaal {
   id: string;
-  bron: 'HR' | 'Subsidie' | 'PDCA' | 'Compliance';
+  bron: 'HR' | 'Subsidie' | 'PDCA' | 'Compliance' | 'Operationeel';
   schoolId: string;
   schoolNaam: string;
   titel: string;
@@ -39,7 +39,7 @@ export async function aggregateSignalen(tenantId: string): Promise<AggregatedSig
   const schoolIds = schools.map((s) => s.id);
   const schoolMap = new Map(schools.map((s) => [s.id, s.naam]));
 
-  const [hrSignalen, subsidieSignalen, pdcaSuggestions, ontbrekendStatuses] = await Promise.all([
+  const [hrSignalen, subsidieSignalen, pdcaSuggestions, ontbrekendStatuses, opsSignalen] = await Promise.all([
     prisma.hrSignaal.findMany({
       where: { schoolId: { in: schoolIds }, status: { not: 'AFGEHANDELD' } },
       orderBy: { createdAt: 'desc' },
@@ -58,6 +58,11 @@ export async function aggregateSignalen(tenantId: string): Promise<AggregatedSig
     prisma.schoolStandaardStatus.findMany({
       where: { schoolId: { in: schoolIds }, status: 'ONTBREEKT' },
       include: { standaard: true },
+      take: 30,
+    }),
+    prisma.opsSignaal.findMany({
+      where: { tenantId, opgelost: false },
+      orderBy: { aangemeldOp: 'desc' },
       take: 30,
     }),
   ]);
@@ -118,6 +123,21 @@ export async function aggregateSignalen(tenantId: string): Promise<AggregatedSig
       urgentie: 'HOOG',
       datum: s.updatedAt.toISOString().slice(0, 10),
       bronType: 'SchoolStandaardStatus',
+    });
+  }
+
+  for (const s of opsSignalen) {
+    result.push({
+      id: s.id,
+      bron: 'Operationeel',
+      schoolId: s.schoolId,
+      schoolNaam: schoolMap.get(s.schoolId) ?? 'Onbekende school',
+      titel: s.titel,
+      beschrijving: s.beschrijving,
+      urgentie: s.severity === 'URGENT' ? 'KRITIEK' : 'HOOG',
+      datum: s.aangemeldOp.toISOString().slice(0, 10),
+      bronType: 'OpsSignaal',
+      aanbevolenActie: undefined,
     });
   }
 
