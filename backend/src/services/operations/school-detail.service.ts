@@ -43,7 +43,7 @@ export async function getSchoolDetail(tenantId: string, schoolId: string): Promi
     }),
     prisma.subsidieDossier.findMany({
       where: { tenantId, schoolIds: { has: schoolId } },
-      orderBy: { deadline: 'asc' },
+      orderBy: { verantwoordingDeadline: 'asc' },
       take: 5,
     }),
     prisma.hrVerzuim.findFirst({
@@ -107,10 +107,10 @@ export async function getSchoolDetail(tenantId: string, schoolId: string): Promi
       total: d.total,
     })),
     subsidieDeadlines: dossiers
-      .filter((d) => d.deadline)
+      .filter((d) => d.verantwoordingDeadline)
       .map((d) => ({
         naam: d.naam ?? 'Subsidiedossier',
-        deadline: d.deadline!.toISOString().slice(0, 10),
+        deadline: d.verantwoordingDeadline!.toISOString().slice(0, 10),
         status: d.status,
       })),
   };
